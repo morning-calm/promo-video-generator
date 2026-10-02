@@ -1,0 +1,9 @@
+{
+  "fps": 60, "duration": 15, "subframes": 4,
+  "spark": 0.30,
+  "titleIn1": 1.0, "cardIn": 1.30, "typeStart": 1.80, "typeEnd": 2.95, "typeText": "A launch deck for Halo, a calmer inbox", "enter": 3.05,
+  "burst": 3.10, "titleOut1": 3.40, "whip1": 4.85,
+  "editIn": 5.05, "winIn": 5.10, "cursorClick": 6.10, "themeClick": 6.78, "themeStep": 0.34, "chips": 7.85, "zoom": 8.60,
+  "presentIn": 9.30, "key": 9.62, "push": 9.70, "shrink": 10.25, "tiles": 10.55, "urlStart": 11.00, "urlEnd": 11.85, "urlText": "visser23.github.io/pitchcraft/#s1=eJxVjk0KwjAQ", "lock": 11.95,
+  "collapse": 12.10, "finale": 12.50, "wordmark": 12.85, "tagline": 13.35, "urlPill": 13.90
+}

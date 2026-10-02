@@ -1,0 +1,31 @@
+# dependencies
+node_modules/
+
+# everything the pipeline produces: stills, sub-frames (thousands of JPEGs), wavs, mp4s
+out/
+tmp/
+*.wav
+*.mp4
+*.mov
+*.webm
+*.gif
+frames/
+stills/
+# ...except finished example films, which are committed on purpose
+!examples/**/*.mp4
+
+# your own videos live in projects/<name>/ - ignored by default so this repo stays a toolkit.
+# Remove these two lines (or `git add -f`) if you want to version a project of your own here.
+projects/*
+!projects/.gitkeep
+
+# python / editor / OS noise
+__pycache__/
+*.pyc
+.venv/
+.DS_Store
+.idea/
+.vscode/
+*.log
+test-results/
+playwright-report/

@@ -1,0 +1,13 @@
+/* motion.css - optional base styles for scenes built with lib/motion.js.  Link it from index.html before your own CSS. */
+html, body { margin: 0; background: #000; overflow: hidden; }
+#v { position: relative; width: 1920px; height: 1080px; overflow: hidden; }   /* the stage: set the size to match cues.json width/height */
+#v * { box-sizing: border-box; }
+.abs { position: absolute; left: 0; top: 0; }
+/* kinetic type line: clips the letters as they rise (set font-family / size / weight on it) */
+.line { position: absolute; white-space: nowrap; overflow: hidden; line-height: 1.02; letter-spacing: -0.04em; font-weight: 800; }
+.ch { display: inline-block; }
+/* frosted glass panel */
+.glass { background: linear-gradient(135deg, rgba(255,255,255,.14), rgba(255,255,255,.05)); border: 1.5px solid rgba(255,255,255,.22); backdrop-filter: blur(22px) saturate(1.4); box-shadow: 0 30px 80px -20px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.3); }
+/* 3D stage: put on a parent, then give children translate3d/rotateY via put() */
+.persp { perspective: 2400px; perspective-origin: 50% 50%; transform-style: preserve-3d; }
+svg { display: block; overflow: visible; }

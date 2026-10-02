@@ -1,0 +1,6 @@
+---
+description: Rules for making promo videos with this repo
+alwaysApply: true
+---
+This repo renders promo videos from HTML scenes. Before doing anything video-related, read `AGENTS.md` (workflow, hard rules, gotchas) and `docs/API.md`.
+Scenes must be pure functions of time (`window.seek(t)`), timings live in `cues.json`, fonts are bundled, outputs go to `out/`, and nothing is committed unless the user asks.
