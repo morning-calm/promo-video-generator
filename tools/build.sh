@@ -12,7 +12,7 @@ REPO="$(cd "$(dirname "$0")/.." && pwd)"; PROJ="$(cd "$1" && pwd)"; NAME="$(base
 OUTDIR="$REPO/out/$NAME"; OUT="${2:-$OUTDIR/$NAME.mp4}"
 read -r FPS DUR S < <(node -e 'const c=require(process.argv[1]);console.log(c.fps||60,c.duration,c.subframes||4)' "$PROJ/cues.json")
 N=$(node -e "console.log(Math.round($FPS*$DUR)*$S)")
-COUNT=$(ls "$OUTDIR/frames"/*.jpg 2>/dev/null | wc -l | tr -d ' ')
+COUNT=$(find "$OUTDIR/frames" -maxdepth 1 -name '*.jpg' 2>/dev/null | wc -l | tr -d ' ')  # find, not ls *.jpg: >~12k frames overflows macOS ARG_MAX
 [ "$COUNT" -ge "$N" ] || { echo "Expected $N frames in $OUTDIR/frames but found $COUNT. Run: node tools/render.js $1 --frames"; exit 1; }
 VF="scale=in_range=full:out_range=tv:flags=accurate_rnd+full_chroma_int:out_color_matrix=bt709,format=yuv420p"
 if [ "$S" -gt 1 ]; then VF="tmix=frames=$S,select='eq(mod(n,$S),$((S-1)))',setpts=N/($FPS*TB),$VF"; fi
