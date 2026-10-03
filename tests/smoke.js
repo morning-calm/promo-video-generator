@@ -9,7 +9,7 @@ const PY = process.env.PV_PYTHON || (process.platform === 'win32' ? 'python' : '
 const sh = c => execSync(c, { cwd: REPO, stdio: ['ignore', 'pipe', 'pipe'] }).toString();
 const exe = (cmd, args) => execFileSync(cmd, args, { cwd: REPO, stdio: ['ignore', 'pipe', 'pipe'] }).toString();  // no shell: paths with spaces are safe
 // The RGB of one pixel of an image (or of the first frame of a video), read with ffmpeg.
-const pixel = (file, x, y) => [...execFileSync('ffmpeg', ['-v', 'error', '-i', file, '-frames:v', '1', '-vf', `crop=1:1:${x}:${y}`, '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-'])];
+const pixel = (file, x, y) => [...execFileSync('ffmpeg', ['-v', 'error', '-i', file, '-frames:v', '1', '-vf', `format=rgb24,crop=1:1:${x}:${y}`, '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-'])];
 let pass = 0; const ok = async (name, fn) => { try { await fn(); pass++; console.log('PASS', name); } catch (e) { console.log('FAIL', name, '\n', e.message); cleanup(); process.exit(1); } };
 // Every test project is named _selftest*; cleanup() removes them and their output.
 const cleanup = () => { for (const top of ['projects', 'out']) { const d = path.join(REPO, top); for (const n of fs.existsSync(d) ? fs.readdirSync(d) : []) if (n.startsWith('_selftest')) fs.rmSync(path.join(d, n), { recursive: true, force: true }); } };
@@ -72,6 +72,18 @@ document.body.style.cssText = 'margin:0;height:180px;background:' + (location.ha
     const c = pixel(path.join(REPO, 'out', '_selftest_page', 'stills', 't0.50.png'), 160, 90); assert(c[0] > 200 && c[2] < 80, `expected red (page found, hash kept), got ${c}`);
     fixture('_selftest_nopage', { 'cues.json': JSON.stringify({ fps: 30, duration: 1, render: { page: 'missing.html' } }) });
     const out = fails('node tools/render.js projects/_selftest_nopage --stills 0.5'); assert(out && /No missing\.html in/.test(out), 'a missing render.page must fail with its name');
+  });
+
+  await ok('sub-frames sample the shutter ends by default and slice centres with render.sampling "centre"', () => {
+    // The page paints t into its red channel (6000 levels per second). Frame 0, sub-frame 1 of 2 at 30 fps with a 0.5 shutter is at
+    // t = 0.25/30 (red 50) when sampling the ends, and t = 0.125/30 (red 25) at the slice centres.
+    const probe = sampling => fixture(`_selftest_sampling_${sampling || 'default'}`, { 'cues.json': JSON.stringify({ fps: 30, duration: 0.2, subframes: 2, shutter: 0.5, width: 64, height: 64, ...(sampling ? { render: { sampling } } : {}) }),
+      'index.html': `<!doctype html><html><body style="margin:0;height:64px"><script>window.seek = t => { document.body.style.background = 'rgb(' + Math.round(t * 6000) + ',0,0)'; }; window.__ready = true;</script></body></html>` });
+    const red = sampling => { probe(sampling); sh(`node tools/render.js projects/_selftest_sampling_${sampling || 'default'} --frames --workers 1`); return pixel(path.join(REPO, 'out', `_selftest_sampling_${sampling || 'default'}`, 'frames', '000001.jpg'), 32, 32)[0]; };
+    const ends = red(null), centre = red('centre');
+    assert(Math.abs(ends - 50) <= 3, `default sampling: expected red ~50, got ${ends}`); assert(Math.abs(centre - 25) <= 3, `centre sampling: expected red ~25, got ${centre}`);
+    fixture('_selftest_sampling_bad', { 'cues.json': JSON.stringify({ fps: 30, duration: 0.2, render: { sampling: 'middle' } }), 'index.html': '' });
+    const out = fails('node tools/render.js projects/_selftest_sampling_bad --stills 0'); assert(out && /render\.sampling must be/.test(out), 'an unknown render.sampling must fail');
   });
 
   await ok('a broken scene fails loudly', () => {

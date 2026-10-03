@@ -24,6 +24,7 @@ All optional; leave `render` out and nothing changes.
 | key | default | meaning |
 |---|---|---|
 | `page` | `index.html` | the page to render, relative to the project; a `?query` or `#hash` is passed to the page (`"dist/reel.html#clean"`) |
+| `sampling` | `ends` | where the sub-frames sit in the open shutter: `ends` spaces them from opening to closing, `centre` puts each at the middle of one of `subframes` equal slices (a slightly shorter blur: `(S-1)/S` of the shutter between first and last sample) |
 
 ## Scene contract (browser)
 
