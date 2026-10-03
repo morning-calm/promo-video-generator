@@ -29,6 +29,8 @@ All optional; leave `render` out and nothing changes.
 | `preset` | `slow` | x264 speed preset (`ultrafast` ... `veryslow`). `PRESET=` in the environment wins |
 | `loudness` | off | target integrated loudness of the soundtrack in LUFS (EBU R128), e.g. `-14` for social video. The build measures `score.wav` over the video's duration, applies one gain, holds peaks at `peak`, and corrects the gain against the limited result until it is within 0.1 LU; it prints what it reached. Without it the score is encoded as it is |
 | `peak` | -2 | with `loudness`: sample-peak ceiling in dBFS for the limiter. Below 0 leaves room for the AAC encoder's overshoot (about 1 dB) |
+| `intro` | off | `{ "file": "sting.mp4", "until": 2.0, "trim": 0 }`: the picture before `until` seconds comes from a video clip (path relative to the project), starting `trim` seconds into it and holding its last frame if it runs short. The page is only rendered from `until` on. The clip's own audio is not used |
+| `outro` | off | `{ "file": "logo.mp4", "at": 12.5, "trim": 0.16 }`: the picture from `at` seconds to the end comes from a clip, the same way; the page is only rendered up to `at`. A clip is scaled to the video's size, so give it the same aspect ratio |
 
 ## Scene contract (browser)
 

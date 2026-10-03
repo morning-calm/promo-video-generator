@@ -116,6 +116,32 @@ let s = ''; const u = new Uint8Array(b.buffer); for (let i = 0; i < u.length; i 
     assert(/render\.loudness must be/.test(fails('node tools/build.js projects/_selftest_loud_bad') || ''), 'a loudness target above 0 LUFS must fail');
   });
 
+  await ok('render.intro / render.outro splice clips around the page, frame-exact, and --mp4 matches --frames + build', () => {
+    // Page: flat blue.  Intro: 0.4 s of red at 25 fps, which must hold until 0.5 s.  Outro: 0.2 s of yellow then green at 24 fps, from 0.8 s,
+    // trimmed by 0.2 s so no yellow shows.  At 30 fps that is frames 0-14 red, 15-23 blue, 24-29 green.
+    const p = fixture('_selftest_splice', { 'cues.json': JSON.stringify({ fps: 30, duration: 1, subframes: 2, width: 64, height: 64,
+      render: { intro: { file: 'intro.mp4', until: 0.5 }, outro: { file: 'outro.mp4', at: 0.8, trim: 0.2 } } }),
+      'index.html': '<!doctype html><html><body style="margin:0;height:64px;background:#00f"><script>window.seek = () => {}; window.__ready = true;</script></body></html>' });
+    exe('ffmpeg', ['-v', 'error', '-f', 'lavfi', '-i', 'color=red:s=320x180:r=25:d=0.4', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', path.join(p, 'intro.mp4')]);
+    exe('ffmpeg', ['-v', 'error', '-f', 'lavfi', '-i', 'color=yellow:s=320x180:r=24:d=0.2', '-f', 'lavfi', '-i', 'color=lime:s=320x180:r=24:d=1',
+      '-filter_complex', '[0][1]concat=n=2:v=1:a=0', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', path.join(p, 'outro.mp4')]);
+    const o = path.join(REPO, 'out', '_selftest_splice'), mp4 = path.join(o, '_selftest_splice.mp4');
+    sh('node tools/render.js projects/_selftest_splice --frames');
+    const files = fs.readdirSync(path.join(o, 'frames')).sort(); assert.deepStrictEqual([files.length, files[0], files[files.length - 1]], [18, '000030.jpg', '000047.jpg'], 'only the page frames 15-23 are rendered');
+    sh('node tools/build.js projects/_selftest_splice');
+    const v = JSON.parse(exe('ffprobe', ['-v', 'error', '-show_streams', '-of', 'json', mp4])).streams[0]; assert.strictEqual(v.nb_frames, '30');
+    const frame = n => [...execFileSync('ffmpeg', ['-v', 'error', '-i', mp4, '-vf', `select=eq(n\\,${n}),format=rgb24,crop=1:1:32:32`, '-frames:v', '1', '-f', 'rawvideo', '-'])];
+    const is = { red: c => c[0] > 200 && c[1] < 80 && c[2] < 80, blue: c => c[2] > 200 && c[0] < 80, green: c => c[1] > 200 && c[0] < 100 && c[2] < 80 };
+    for (const [n, want] of [[0, 'red'], [14, 'red'], [15, 'blue'], [23, 'blue'], [24, 'green'], [29, 'green']]) { const c = frame(n); assert(is[want](c), `frame ${n} should be ${want}, got ${c}`); }
+    sh(`node tools/render.js projects/_selftest_splice --mp4 ${path.join('out', '_selftest_splice', 'stream.mp4')}`);
+    assert(fs.readFileSync(mp4).equals(fs.readFileSync(path.join(o, 'stream.mp4'))), 'streamed splice differs from frames + build');
+    const cues = JSON.parse(fs.readFileSync(path.join(p, 'cues.json'), 'utf8'));
+    fs.writeFileSync(path.join(p, 'cues.json'), JSON.stringify({ ...cues, render: { ...cues.render, intro: { file: 'intro.mp4', until: 0.9 } } }));
+    assert(/must come before render\.outro\.at/.test(fails('node tools/build.js projects/_selftest_splice') || ''), 'an intro ending after the outro starts must fail');
+    fs.writeFileSync(path.join(p, 'cues.json'), JSON.stringify({ ...cues, render: { outro: { file: 'missing.mp4', at: 0.8 } } }));
+    assert(/render\.outro\.file not found/.test(fails('node tools/render.js projects/_selftest_splice --frames') || ''), 'a missing clip must fail');
+  });
+
   await ok('the file server answers byte ranges', async () => {
     const srv = http.createServer(handler(REPO)).listen(0, '127.0.0.1'); await new Promise(r => srv.on('listening', r));
     const get = range => new Promise((res, rej) => http.get({ host: '127.0.0.1', port: srv.address().port, path: '/package.json', headers: range ? { range } : {} }, r => { const b = []; r.on('data', d => b.push(d)); r.on('end', () => res({ status: r.statusCode, h: r.headers, body: Buffer.concat(b) })); }).on('error', rej));

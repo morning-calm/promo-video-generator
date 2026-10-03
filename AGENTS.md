@@ -79,6 +79,7 @@ Tell the user: the mp4 path, duration/resolution, a beat-by-beat description, ho
 - **Tell the truth.** Nothing in the video may claim something the product does not do.
 - **Clean up.** `render.js` starts and stops its own server and browser. If a run is killed, look for orphaned Playwright Chrome processes (command line contains `--remote-debugging-pipe`) and kill **those PIDs only**. Never `pkill chrome` - that closes the user's real browser.
 - **Outputs stay in `out/`** (git-ignored). Do not commit frames, wavs or mp4s (except a deliberate `examples/**` film).
+- **A finished brand sting or logo animation is a clip, not a scene.** Splice it with `render.intro` / `render.outro` (`docs/API.md`) instead of rebuilding it in HTML; score its sounds in the soundtrack.
 - Keep `lib/` general; project-specific code lives in the project folder.
 
 ## Gotchas learned the hard way

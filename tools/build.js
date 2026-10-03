@@ -11,8 +11,10 @@ const REPO = path.join(__dirname, '..'), PROJ = path.resolve(process.argv[2]), N
 const OUTDIR = path.join(REPO, 'out', NAME), FRAMES = path.join(OUTDIR, 'frames'), WAV = path.join(OUTDIR, 'score.wav');
 const OUT = process.argv[3] ? path.resolve(process.argv[3]) : path.join(OUTDIR, NAME + '.mp4');
 if (!fs.existsSync(path.join(PROJ, 'cues.json'))) { console.log(`No cues.json in ${PROJ}`); process.exit(2); }
-let S; try { S = settings(JSON.parse(fs.readFileSync(path.join(PROJ, 'cues.json'), 'utf8'))); } catch (e) { console.log(e.message); process.exit(2); }
-const N = Math.round(S.fps * S.duration) * S.S, COUNT = fs.existsSync(FRAMES) ? fs.readdirSync(FRAMES).filter(f => f.endsWith('.jpg')).length : 0;
+let S; try { S = settings(JSON.parse(fs.readFileSync(path.join(PROJ, 'cues.json'), 'utf8')), PROJ); } catch (e) { console.log(e.message); process.exit(2); }
+// Sub-frame files are numbered f*S+s; with an intro or outro only the page's own frames (S.first .. S.last-1) are rendered.
+const inRange = f => /^\d+\.jpg$/.test(f) && Number(f.slice(0, -4)) >= S.first * S.S && Number(f.slice(0, -4)) < S.last * S.S;
+const N = (S.last - S.first) * S.S, COUNT = fs.existsSync(FRAMES) ? fs.readdirSync(FRAMES).filter(inRange).length : 0;
 if (COUNT < N) { console.log(`Expected ${N} frames in ${FRAMES} but found ${COUNT}. Run: node tools/render.js ${process.argv[2]} --frames`); process.exit(1); }
 const wav = fs.existsSync(WAV) ? WAV : null;
 if (!wav) console.log(`(no ${WAV} - building a silent video)`);

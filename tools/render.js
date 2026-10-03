@@ -39,7 +39,8 @@ if (!['ends', 'centre'].includes(SAMPLING)) { console.error(`render.sampling mus
 const offset = s => S === 1 ? 0 : (SAMPLING === 'centre' ? (s + 0.5) / S - 0.5 : s / (S - 1) - 0.5) * SHUTTER;  // sub-frame s, in frames from the frame's own time
 const timeOf = (f, s) => Math.max(0, Math.min(DUR, (f + offset(s)) / FPS));
 const MODE = arg('stills') ? 'stills' : arg('frames') ? 'frames' : arg('mp4') ? 'mp4' : 'sound';
-let ENC; if (MODE === 'mp4') { try { ENC = settings(CUES); } catch (e) { console.error(e.message); process.exit(2); } }
+// ENC.first .. ENC.last-1 are the frames the page renders (all of them unless render.intro / render.outro supply the rest).
+let ENC; if (MODE === 'mp4' || MODE === 'frames') { try { ENC = settings(CUES, PROJECT); } catch (e) { console.error(e.message); process.exit(2); } }
 
 (async () => {
   const srv = http.createServer(handler(REPO)).listen(0, '127.0.0.1');
@@ -71,10 +72,9 @@ let ENC; if (MODE === 'mp4') { try { ENC = settings(CUES); } catch (e) { console
     fs.mkdirSync(OUT + '/stills', { recursive: true }); const pg = await open();
     for (const t of String(arg('stills')).split(',').map(Number)) { await pg.evaluate(t => window.seek(t), t); await pg.screenshot({ path: `${OUT}/stills/t${t.toFixed(2)}.png` }); console.log('still', t); }
   } else if (MODE === 'frames') {
-    const N = Math.round(FPS * DUR), total = N * S;
     if (!arg('keep')) fs.rmSync(OUT + '/frames', { recursive: true, force: true }); fs.mkdirSync(OUT + '/frames', { recursive: true });
     const only = arg('only') ? String(arg('only')).split('-').map(Number) : null;
-    const todo = []; for (let f = 0; f < N; f++) { if (only && (f < only[0] || f > only[1])) continue; for (let s = 0; s < S; s++) todo.push([f, s]); }
+    const todo = []; for (let f = ENC.first; f < ENC.last; f++) { if (only && (f < only[0] || f > only[1])) continue; for (let s = 0; s < S; s++) todo.push([f, s]); }
     const first = await open(); await soundtrack(first);
     let next = 0, done = 0; const t0 = Date.now();
     const run = async pg => {
@@ -89,7 +89,7 @@ let ENC; if (MODE === 'mp4') { try { ENC = settings(CUES); } catch (e) { console
     await Promise.all(Array.from({ length: workers }, (_, k) => run(k === 0 ? first : null))); console.log(`frames done: ${todo.length} in ${Math.round((Date.now() - t0) / 1000)}s -> ${path.relative(REPO, OUT)}/frames`);
   } else if (MODE === 'mp4') {
     // Workers screenshot sub-frames in parallel; the writer feeds them to ffmpeg strictly in order, holding at most a few per worker in memory.
-    const total = Math.round(FPS * DUR) * S, out = arg('mp4') === true ? path.join(OUT, NAME + '.mp4') : path.resolve(String(arg('mp4'))), wav = path.join(OUT, 'score.wav');
+    const total = (ENC.last - ENC.first) * S, out = arg('mp4') === true ? path.join(OUT, NAME + '.mp4') : path.resolve(String(arg('mp4'))), wav = path.join(OUT, 'score.wav');
     fs.mkdirSync(path.dirname(out), { recursive: true });
     const first = await open(); await soundtrack(first);
     const score = fs.existsSync(wav) ? wav : null;
@@ -104,7 +104,7 @@ let ENC; if (MODE === 'mp4') { try { ENC = settings(CUES); } catch (e) { console
       for (;;) {
         const i = next++; if (i >= total || ended) break;
         while (i - written >= workers * 4 && !ended) await wait(5);
-        await pg.evaluate(t => window.seek(t), timeOf(Math.floor(i / S), i % S));
+        await pg.evaluate(t => window.seek(t), timeOf(ENC.first + Math.floor(i / S), i % S));
         shots.set(i, await pg.screenshot({ type: 'jpeg', quality: 95 }));
       }
     };
