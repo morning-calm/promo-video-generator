@@ -44,7 +44,7 @@ def load_cues(project_dir):
 
 
 def default_out(project_dir, name='score.wav'):
-    """out/<project name>/score.wav at the repo root, or argv[1] if given (tools/build.sh looks for exactly this file)"""
+    """out/<project name>/score.wav at the repo root, or argv[1] if given (tools/build.js looks for exactly this file)"""
     if len(sys.argv) > 1: return sys.argv[1]
     repo = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
     return os.path.join(repo, 'out', os.path.basename(os.path.abspath(project_dir)), name)

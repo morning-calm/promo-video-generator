@@ -23,5 +23,5 @@ A 15-second, 1920x1080, 60 fps promo for [Pitchcraft](https://visser23.github.io
 ```bash
 node tools/render.js examples/pitchcraft --frames --workers 5
 python3 examples/pitchcraft/sound.py
-bash tools/build.sh examples/pitchcraft        # -> out/pitchcraft/pitchcraft.mp4
+node tools/build.js examples/pitchcraft        # -> out/pitchcraft/pitchcraft.mp4
 ```

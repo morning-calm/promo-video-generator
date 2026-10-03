@@ -9,7 +9,7 @@
    <project> is a folder (under this repo) containing index.html and cues.json.  Optional env: PV_CHANNEL=chrome (default) | "" for bundled Chromium.
 
    Frame f, sub-frame s of S is rendered at   t = (f + (s/(S-1) - 0.5) * shutter) / fps   (shutter = fraction of a frame the "camera" is open, default 0.5).
-   tools/build.sh averages the S sub-frames of each frame, so anything that moves during the shutter is blurred like real film. */
+   tools/build.js averages the S sub-frames of each frame, so anything that moves during the shutter is blurred like real film. */
 const { chromium } = require('playwright-core');
 const http = require('http'), fs = require('fs'), path = require('path'), os = require('os');
 const REPO = path.join(__dirname, '..');

@@ -10,7 +10,7 @@ Read this whole file once, then follow the workflow. Humans: see `README.md`; if
 2. `scene.js` defines `window.seek(t)`. Calling `seek(7.25)` must place every element exactly as it should look at 7.25 s. No timers, no `requestAnimationFrame`, no CSS animations or transitions, no `Math.random()`.
 3. `cues.json` is the **single source of timing** (fps, duration, and the named moments: `"hit": 2.45`). `scene.js` reads it for the picture, `sound.py` reads it for the sound, so they cannot drift.
 4. `tools/render.js` calls `seek()` for every frame (4 sub-frames per frame by default) and screenshots it.
-5. `tools/build.sh` averages the sub-frames (real motion blur), encodes H.264, muxes the soundtrack.
+5. `tools/build.js` averages the sub-frames (real motion blur), encodes H.264, muxes the soundtrack.
 6. Because it is deterministic you can **preview any second as a still in about a second**. Do that constantly.
 
 ## Setup (once)
@@ -21,6 +21,8 @@ node tools/doctor.js          # must end with "All good" - needs node 18+, Chrom
 ```
 
 If Chrome is missing: `PV_CHANNEL="" npx playwright-core install chromium` and prefix commands with `PV_CHANNEL=""`.
+
+On Windows: no bash is needed (every tool is `node ...`); run Python as `python`, or as whatever `PV_PYTHON` names if the user has set it. `doctor.js` prints the Python it checked.
 
 ## Workflow (do these in order)
 
@@ -35,7 +37,7 @@ A promo about software is only convincing with the **real product on screen**. P
 
 ### 3. Scaffold and write the scene
 ```bash
-bash tools/new-project.sh my-launch        # copies templates/starter -> projects/my-launch (a working 6 s film)
+node tools/new-project.js my-launch        # copies templates/starter -> projects/my-launch (a working 6 s film)
 node tools/render.js projects/my-launch --stills 1,3,5     # -> out/my-launch/stills/t1.00.png ...
 ```
 Read `templates/starter/scene.js` (80 lines, every pattern) and `examples/pitchcraft/promo.js` (a full 15 s film). Then `docs/API.md` for `PV.*`.
@@ -56,7 +58,7 @@ Copy `templates/starter/sound.py` and place sounds at `C['cue']` times with `lib
 ### 6. Full render and build
 ```bash
 node tools/render.js projects/my-launch --frames      # 900 frames x 4 sub-frames = 3,600 JPEGs; ~1-5 minutes
-bash tools/build.sh projects/my-launch                # -> out/my-launch/my-launch.mp4
+node tools/build.js projects/my-launch                # -> out/my-launch/my-launch.mp4
 ```
 These are long-running: start them in the background (in Cursor: `block_until_ms: 0`, then await) and poll; do not sleep-loop. Do a quick `--only 300-360` render to spot-check a range first.
 
@@ -80,9 +82,9 @@ Tell the user: the mp4 path, duration/resolution, a beat-by-beat description, ho
 
 ## Gotchas learned the hard way
 
-1. **`tmix` averages the trailing window**, so the frame to keep is `n % S == S-1`. `build.sh` does this; if you hand-roll ffmpeg, remember it (keeping `n%S==0` blends sub-frames from the neighbouring frames, so motion is smeared into the wrong time - it was measurably further from the true sub-frame average).
+1. **`tmix` averages the trailing window**, so the frame to keep is `n % S == S-1`. `build.js` does this; if you hand-roll ffmpeg, remember it (keeping `n%S==0` blends sub-frames from the neighbouring frames, so motion is smeared into the wrong time - it was measurably further from the true sub-frame average).
 2. **Container visibility.** See rule above; the symptom is a ghost of the previous scene on the end card.
-3. **JPEG frames are full range.** Without the `scale=in_range=full:out_range=tv` step ffmpeg produces `yuvj420p`, which some players show with wrong contrast. `build.sh` handles it.
+3. **JPEG frames are full range.** Without the `scale=in_range=full:out_range=tv` step ffmpeg produces `yuvj420p`, which some players show with wrong contrast. `build.js` handles it.
 4. **Fonts not loaded at t=0.** Faces only used later are not loaded when you measure text. Pass them to `PV.loaded([...])`.
 5. **Measure text after fonts load**, then position (`getBoundingClientRect`), or lockups drift.
 6. **Backdrop-filter and big blurs are slow** in headless Chrome. Keep `.glass` panels few; render time scales with it.
@@ -97,8 +99,8 @@ Tell the user: the mp4 path, duration/resolution, a beat-by-beat description, ho
 lib/motion.js       browser toolkit: easings, spring, seeded rng, put/mk, kinetic type, shake        (docs/API.md)
 lib/motion.css      optional base CSS (.abs .line .ch .glass .persp)
 lib/synth.py        procedural sound studio: instruments, add(), master()                          (docs/API.md)
-tools/render.js     scene -> stills / sub-frames          tools/build.sh   sub-frames (+wav) -> mp4
-tools/doctor.js     dependency check                      tools/new-project.sh   scaffold a project
+tools/render.js     scene -> stills / sub-frames          tools/build.js   sub-frames (+wav) -> mp4
+tools/doctor.js     dependency check                      tools/new-project.js   scaffold a project
 tools/sheet.py      contact sheets for reviewing stills
 templates/starter/  working 6 s project to copy
 examples/pitchcraft/  a full 15 s film made with this toolkit (+ its mp4), the best reference for quality

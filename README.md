@@ -24,6 +24,8 @@ A small, dependency-light toolkit that turns a web page into an MP4: 1080p, 60 f
 
 Requirements: **Node 18+**, **Google Chrome** (or Playwright's Chromium), **ffmpeg** with libx264 + aac, **Python 3** with `numpy` and `scipy` (and optionally `pillow` for contact sheets).
 
+**Windows:** everything runs from PowerShell or cmd; no bash is needed. Use `python` where these docs say `python3`. If that is not the Python that has numpy + scipy, point `PV_PYTHON` at the one that does (`$env:PV_PYTHON = "C:\path\to\python.exe"`); `tools/doctor.js` and `npm test` use it.
+
 ```bash
 git clone https://github.com/visser23/promo-video-generator.git
 cd promo-video-generator
@@ -31,13 +33,13 @@ npm install
 node tools/doctor.js                  # checks everything above; prints the fix for anything missing
 
 # make a project from the starter (a working 6 s film) and preview it
-bash tools/new-project.sh hello
+node tools/new-project.js hello
 node tools/render.js projects/hello --stills 1,2.5,4,5.5       # -> out/hello/stills/*.png  (seconds)
 
 # full pipeline
 node tools/render.js projects/hello --frames                   # 360 frames x 4 sub-frames
 python3 projects/hello/sound.py                                # -> out/hello/score.wav
-bash tools/build.sh projects/hello                             # -> out/hello/hello.mp4
+node tools/build.js projects/hello                             # -> out/hello/hello.mp4
 ```
 
 Re-create the included example from scratch:
@@ -45,7 +47,7 @@ Re-create the included example from scratch:
 ```bash
 node tools/render.js examples/pitchcraft --frames --workers 5   # 3,600 sub-frames, 1-5 minutes
 python3 examples/pitchcraft/sound.py
-bash tools/build.sh examples/pitchcraft                         # -> out/pitchcraft/pitchcraft.mp4
+node tools/build.js examples/pitchcraft                         # -> out/pitchcraft/pitchcraft.mp4
 ```
 
 `npm test` runs an end-to-end smoke test (stills, determinism, sub-frames, sound, mp4 probe, error handling) in about a minute.
@@ -56,7 +58,7 @@ bash tools/build.sh examples/pitchcraft                         # -> out/pitchcr
  projects/<name>/                         tools/                               out/<name>/ (git-ignored)
  ├─ cues.json  ── timing, fps, size ──┐
  ├─ index.html + scene.js (seek(t)) ──┼─► render.js ─► stills/*.png, frames/*.jpg ─┐
- ├─ assets/ fonts/                    │    (headless Chrome, 4 sub-frames/frame)   ├─► build.sh ─► <name>.mp4
+ ├─ assets/ fonts/                    │    (headless Chrome, 4 sub-frames/frame)   ├─► build.js ─► <name>.mp4
  └─ sound.py (lib/synth.py) ──────────┴─► score.wav ───────────────────────────────┘   (tmix blur, H.264, AAC)
 ```
 
@@ -64,7 +66,7 @@ bash tools/build.sh examples/pitchcraft                         # -> out/pitchcr
 2. **`scene.js`** - sets `window.seek = t => ...`, positioning every element for time `t` with the helpers in `lib/motion.js`: easings, springs, seeded random, `put()`, per-letter kinetic type, camera shake.
 3. **`render.js`** - serves the repo on a private local port, opens the scene in headless Chrome (several parallel pages), steps `t`, screenshots. Sub-frame `s` of `S` for frame `f` is sampled at `t = (f + (s/(S-1) - 0.5) * shutter) / fps`.
 4. **`sound.py`** - places synthesised instruments (`lib/synth.py`) at cue times and masters the result (reverb, loudness, soft limiter).
-5. **`build.sh`** - averages sub-frames with ffmpeg `tmix` (that average is the motion blur), converts to TV-range BT.709 `yuv420p`, encodes H.264 + AAC with `+faststart`.
+5. **`build.js`** - averages sub-frames with ffmpeg `tmix` (that average is the motion blur), converts to TV-range BT.709 `yuv420p`, encodes H.264 + AAC with `+faststart`.
 
 ## What is in the box
 
@@ -72,8 +74,8 @@ bash tools/build.sh examples/pitchcraft                         # -> out/pitchcr
 lib/motion.js         browser toolkit (window.PV): maths, easings, spring, rng, put/mk, kinetic type, shake     docs/API.md
 lib/motion.css        optional base CSS: .abs .line .ch .glass .persp
 lib/synth.py          procedural sound studio: kick, hat, clap, bass, pluck, bell, pad, tick, whoosh, riser, boom, master()
-tools/render.js       scene -> stills / sub-frames            tools/build.sh      sub-frames + wav -> mp4
-tools/doctor.js       dependency check                        tools/new-project.sh   scaffold from the starter
+tools/render.js       scene -> stills / sub-frames            tools/build.js      sub-frames + wav -> mp4
+tools/doctor.js       dependency check                        tools/new-project.js   scaffold from the starter
 tools/sheet.py        contact sheet for reviewing stills
 templates/starter/    a working 6 s project: kinetic title, glass card, impact, particles, shake, CTA, scored
 examples/pitchcraft/  a complete 15 s film (scene, cues, score, captured assets, bundled fonts, the finished mp4)
@@ -120,11 +122,11 @@ All generated files go to `out/` (git-ignored): stills, thousands of sub-frame J
 | `Scene never set window.__ready` | JS error or missing file - read the lines above it (`PAGE ERROR`, `HTTP 404 ...`). Ensure the scene ends with `await PV.loaded(); window.seek(0); PV.ready();` |
 | `page.screenshot: Timeout 30000ms` | machine starved or an orphaned Chrome is hogging it. Lower `--workers`, quit heavy apps. Kill only leftover Playwright Chrome PIDs (command line has `--remote-debugging-pipe`), never `pkill chrome`. |
 | Ghost of an earlier scene visible | a hidden parent with a `visibility:visible` child. Hide containers with `display:none` (`PV.show`). |
-| Colours look washed out / `yuvj420p` | you bypassed `build.sh`; keep the `scale=in_range=full:out_range=tv` step. |
+| Colours look washed out / `yuvj420p` | you bypassed `build.js`; keep the `scale=in_range=full:out_range=tv` step. |
 | Text looks soft or flickers between frames | do not use `will-change: transform`; Chrome then keeps a stale raster scale. See `docs/LESSONS.md`. |
 | `Expected N frames ... found M` | the render was interrupted; re-run `--frames` (it wipes and restarts). |
 | Fonts differ from your machine | bundle `.woff2` in `projects/<name>/fonts` and `@font-face` them; don't rely on installed fonts. |
-| File too big | raise `CRF` (`CRF=22 bash tools/build.sh ...`) or lower `subframes`. Film grain is expensive to compress. |
+| File too big | raise `CRF` (`CRF=22 node tools/build.js ...`) or lower `subframes`. Film grain is expensive to compress. |
 | Different aspect ratio | set `width`/`height` in `cues.json` (verified: 1080x1920 renders at that size), the same size on `#v` in CSS, the `<canvas>` width/height attributes, the `W`/`H` constants in the scene, and `PV.createWorld(stage, canvas, w, h)`. Then re-lay-out your elements - the starter's positions assume 1920x1080. |
 
 ## Limits and honesty

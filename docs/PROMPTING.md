@@ -35,7 +35,7 @@ Rules of thumb you can state: one idea per beat; 3-5 beats in 15 s; text on scre
 > Storyboard (confirm or improve it before you build): {beat 1}; {beat 2}; {beat 3}; end card "{name} - {tagline} - {url}".
 > Look and feel: {style words, colours, fonts}. Real assets: {paths / URL}. Capture the real product with Playwright at 2x for anything shown on screen. Allowed claims: {list}. Do not claim anything else.
 >
-> Process: scaffold `projects/{name}` with `tools/new-project.sh`; write all timings into `cues.json` first; build the scene as a pure `seek(t)`; review stills before/at/after every cue and around every transition, and **measure** layout (bounding rects, pixel checks) instead of trusting your read of an image; synthesise a soundtrack locked to `cues.json` and verify it numerically; render all frames in the background; build the MP4; then verify the MP4 itself with ffprobe and frames extracted from it.
+> Process: scaffold `projects/{name}` with `tools/new-project.js`; write all timings into `cues.json` first; build the scene as a pure `seek(t)`; review stills before/at/after every cue and around every transition, and **measure** layout (bounding rects, pixel checks) instead of trusting your read of an image; synthesise a soundtrack locked to `cues.json` and verify it numerically; render all frames in the background; build the MP4; then verify the MP4 itself with ffprobe and frames extracted from it.
 >
 > Do not come back until you are proud of it: motion should have easing, overshoot, stagger, depth, camera shake only on impacts, and nothing should overlap or be cut off. Deliver the MP4 path, a beat-by-beat description, and the commands to re-render. Do not commit or push.
 

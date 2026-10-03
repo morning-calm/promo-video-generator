@@ -1,6 +1,6 @@
 # API reference
 
-Everything a scene or soundtrack can call. Source of truth: `lib/motion.js`, `lib/synth.py`, `tools/render.js`, `tools/build.sh`.
+Everything a scene or soundtrack can call. Source of truth: `lib/motion.js`, `lib/synth.py`, `tools/render.js`, `tools/build.js`.
 
 ## cues.json (per project)
 
@@ -97,15 +97,15 @@ Musical shortcuts: MIDI 45 = A2, 57 = A3, 69 = A4, 81 = A5, 93 = A6. A minor / C
 
 ```bash
 node tools/doctor.js                                      # check dependencies
-bash  tools/new-project.sh <name>                         # scaffold projects/<name> from the starter
+node  tools/new-project.js <name>                         # scaffold projects/<name> from the starter
 node  tools/render.js <project> --stills 1,2.5,9          # PNG stills -> out/<name>/stills/
 node  tools/render.js <project> --frames [--workers N] [--only 120-180] [--keep]
 python3 <project>/sound.py                                # -> out/<name>/score.wav
-bash  tools/build.sh <project> [out.mp4]                  # CRF=18 PRESET=slow by default
+node  tools/build.js <project> [out.mp4]                  # CRF=18 PRESET=slow by default
 python3 tools/sheet.py out/sheet.png a.png b.png ...      # contact sheet (needs Pillow)
 npm test                                                  # end-to-end smoke test (~30 s)
 ```
 
-Environment: `PV_CHANNEL=chrome` (default) or `PV_CHANNEL=""` for Playwright's bundled Chromium.
+Environment: `PV_CHANNEL=chrome` (default) or `PV_CHANNEL=""` for Playwright's bundled Chromium. `PV_PYTHON` = the Python that `doctor.js` and `npm test` run (default `python3`, or `python` on Windows).
 
 Timing, for planning: the 15 s example is 3,600 JPEG screenshots and takes about 1-5 minutes on a modern laptop; a 6 s starter about a third of that. `subframes: 2` halves it with a lighter blur; `subframes: 1` is the fast draft mode.
