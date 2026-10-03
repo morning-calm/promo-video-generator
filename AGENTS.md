@@ -103,7 +103,9 @@ lib/motion.css      optional base CSS (.abs .line .ch .glass .persp)
 lib/synth.py        procedural sound studio: instruments, add(), master()                          (docs/API.md)
 tools/render.js     scene -> stills / sub-frames          tools/build.js   sub-frames (+wav) -> mp4
 tools/doctor.js     dependency check                      tools/new-project.js   scaffold a project
-tools/sheet.py      contact sheets for reviewing stills
+tools/sheet.py      contact sheets for reviewing stills        tools/loudness.js   loudness report for a wav or mp4
+tools/encode.js     the ffmpeg command (build.js, --mp4)       tools/cues.js       reads cues.json, applies a variant
+tools/serve.js      the local file server render.js uses (byte ranges, UTF-8)
 templates/starter/  working 6 s project to copy
 examples/pitchcraft/  a full 15 s film made with this toolkit (+ its mp4), the best reference for quality
 projects/           YOUR projects (git-ignored)           out/   all generated output (git-ignored)
