@@ -27,6 +27,8 @@ All optional; leave `render` out and nothing changes.
 | `sampling` | `ends` | where the sub-frames sit in the open shutter: `ends` spaces them from opening to closing, `centre` puts each at the middle of one of `subframes` equal slices (a slightly shorter blur: `(S-1)/S` of the shutter between first and last sample) |
 | `crf` | 18 | x264 quality (0-51, lower = bigger and better). `CRF=` in the environment wins, for one-off builds |
 | `preset` | `slow` | x264 speed preset (`ultrafast` ... `veryslow`). `PRESET=` in the environment wins |
+| `loudness` | off | target integrated loudness of the soundtrack in LUFS (EBU R128), e.g. `-14` for social video. The build measures `score.wav` over the video's duration, applies one gain, holds peaks at `peak`, and corrects the gain against the limited result until it is within 0.1 LU; it prints what it reached. Without it the score is encoded as it is |
+| `peak` | -2 | with `loudness`: sample-peak ceiling in dBFS for the limiter. Below 0 leaves room for the AAC encoder's overshoot (about 1 dB) |
 
 ## Scene contract (browser)
 
@@ -120,6 +122,7 @@ python3 <project>/sound.py                                # -> out/<name>/score.
 node  tools/build.js <project> [out.mp4]                  # CRF=18 PRESET=slow by default
 node  tools/render.js <project> --mp4 [out.mp4]           # render + build in one pass, no frame files (run sound.py first)
 node  tools/render.js <project> --sound                   # score.wav from the page's window.__soundtrack()
+node  tools/loudness.js <wav-or-mp4> [--every 0.5]        # short-term loudness over time, integrated, range, true + sample peak
 python3 tools/sheet.py out/sheet.png a.png b.png ...      # contact sheet (needs Pillow)
 npm test                                                  # end-to-end smoke test (~30 s)
 ```

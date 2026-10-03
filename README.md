@@ -79,6 +79,7 @@ lib/synth.py          procedural sound studio: kick, hat, clap, bass, pluck, bel
 tools/render.js       scene -> stills / sub-frames            tools/build.js      sub-frames + wav -> mp4
 tools/doctor.js       dependency check                        tools/new-project.js   scaffold from the starter
 tools/sheet.py        contact sheet for reviewing stills
+tools/loudness.js     loudness report for a wav or mp4 (short-term over time, integrated, true peak)
 templates/starter/    a working 6 s project: kinetic title, glass card, impact, particles, shake, CTA, scored
 examples/pitchcraft/  a complete 15 s film (scene, cues, score, captured assets, bundled fonts, the finished mp4)
 tests/smoke.js        end-to-end test

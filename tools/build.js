@@ -5,7 +5,7 @@
      CRF=18 (default; lower = bigger, better)   PRESET=slow (default)   - or set "render": { "crf", "preset" } in cues.json
    The ffmpeg command itself is in tools/encode.js. */
 const { spawnSync } = require('child_process'), fs = require('fs'), path = require('path');
-const { settings, ffmpegArgs } = require('./encode');
+const { settings, ffmpegArgs, loudness, describe } = require('./encode');
 if (process.argv.length < 3) { console.log('usage: node tools/build.js <project-dir> [output.mp4]'); process.exit(2); }
 const REPO = path.join(__dirname, '..'), PROJ = path.resolve(process.argv[2]), NAME = path.basename(PROJ);
 const OUTDIR = path.join(REPO, 'out', NAME), FRAMES = path.join(OUTDIR, 'frames'), WAV = path.join(OUTDIR, 'score.wav');
@@ -19,6 +19,8 @@ if (!wav) console.log(`(no ${WAV} - building a silent video)`);
 fs.mkdirSync(path.dirname(OUT), { recursive: true });
 // Arguments go straight to the program (no shell), so paths with spaces need no quoting on any OS.
 const run = (cmd, args) => { const r = spawnSync(cmd, args, { stdio: 'inherit' }); if (r.error) { console.error(`${cmd}: ${r.error.message}`); process.exit(1); } if (r.status !== 0) process.exit(r.status ?? 1); };
-run('ffmpeg', ffmpegArgs(S, { frames: path.join(FRAMES, '%06d.jpg'), wav, out: OUT }));
+let L; try { L = loudness(S, wav); } catch (e) { console.log(e.message); process.exit(1); }
+if (L) console.log(describe(S, L));
+run('ffmpeg', ffmpegArgs(S, { frames: path.join(FRAMES, '%06d.jpg'), wav, out: OUT, af: L && L.filter }));
 run('ffprobe', ['-v', 'error', '-show_entries', 'stream=codec_name,width,height,r_frame_rate,pix_fmt,duration', '-of', 'default=nw=1', OUT]);
 console.log(`wrote ${OUT} (${(fs.statSync(OUT).size / 1048576).toFixed(1)} MB)`);

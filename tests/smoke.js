@@ -92,6 +92,30 @@ let s = ''; const u = new Uint8Array(b.buffer); for (let i = 0; i < u.length; i 
     assert(/must return a base64-encoded WAV/.test(fails('node tools/render.js projects/_selftest_badsound --sound') || ''), 'a soundtrack that is not a WAV must fail');
   });
 
+  await ok('render.loudness reaches its target, holds peaks at render.peak without shifting the audio, and loudness.js reports it', () => {
+    // A quiet 440 Hz tone (about -27 LUFS) with one near-full-scale click starting at exactly sample 24000 (0.5 s).
+    const o = path.join(REPO, 'out', '_selftest_loud'), wav = path.join(o, 'score.wav'), n = 57600, CLICK = 24000;
+    fixture('_selftest_loud', { 'cues.json': JSON.stringify({ fps: 30, duration: 1, subframes: 1, width: 64, height: 64, render: { loudness: -16 } }),
+      'index.html': '<!doctype html><html><body style="margin:0;height:64px;background:#246"><script>window.seek = () => {}; window.__ready = true;</script></body></html>' });
+    const b = Buffer.alloc(44 + n * 4); b.write('RIFF', 0, 'latin1'); b.writeUInt32LE(36 + n * 4, 4); b.write('WAVEfmt ', 8, 'latin1'); b.writeUInt32LE(16, 16); b.writeUInt16LE(1, 20); b.writeUInt16LE(2, 22);
+    b.writeUInt32LE(48000, 24); b.writeUInt32LE(192000, 28); b.writeUInt16LE(4, 32); b.writeUInt16LE(16, 34); b.write('data', 36, 'latin1'); b.writeUInt32LE(n * 4, 40);
+    for (let i = 0; i < n; i++) { const v = Math.round(32767 * (i >= CLICK && i < CLICK + 10 ? 0.99 : 0.05 * Math.sin(2 * Math.PI * 440 * i / 48000))); b.writeInt16LE(v, 44 + i * 4); b.writeInt16LE(v, 46 + i * 4); }
+    fs.mkdirSync(o, { recursive: true }); fs.writeFileSync(wav, b);
+    sh('node tools/render.js projects/_selftest_loud --frames'); sh('node tools/build.js projects/_selftest_loud');
+    const report = sh(`node tools/loudness.js ${path.join('out', '_selftest_loud', '_selftest_loud.mp4')}`);
+    const lufs = parseFloat((/integrated (-?[\d.]+) LUFS/.exec(report) || [])[1]), peak = parseFloat((/sample peak (-?[\d.]+) dBFS/.exec(report) || [])[1]);
+    assert(Math.abs(lufs + 16) <= 0.5, `integrated loudness should be -16 LUFS, the report says ${lufs}`);
+    assert(peak <= -1, `the click should be held near -2 dBFS (AAC can overshoot by up to 1 dB), the report says ${peak}`);
+    // The same filter on the wav alone: the click must still start at sample 24000, so the limiter's look-ahead delay has been trimmed off.
+    const L = require('../tools/encode').loudness({ loudness: -16, peak: -2, duration: 1 }, wav), filtered = path.join(o, 'filtered.wav');
+    exe('ffmpeg', ['-v', 'error', '-y', '-i', wav, '-af', L.filter, filtered]);
+    const raw = execFileSync('ffmpeg', ['-v', 'error', '-i', filtered, '-f', 's16le', '-']);
+    let onset = -1; for (let k = 0; k < raw.length / 4; k++) if (Math.abs(raw.readInt16LE(k * 4)) > 16000) { onset = k; break; }
+    assert.strictEqual(onset, CLICK, `the click should start at sample ${CLICK}, it starts at ${onset}`);
+    fixture('_selftest_loud_bad', { 'cues.json': JSON.stringify({ fps: 30, duration: 1, render: { loudness: 3 } }) });
+    assert(/render\.loudness must be/.test(fails('node tools/build.js projects/_selftest_loud_bad') || ''), 'a loudness target above 0 LUFS must fail');
+  });
+
   await ok('the file server answers byte ranges', async () => {
     const srv = http.createServer(handler(REPO)).listen(0, '127.0.0.1'); await new Promise(r => srv.on('listening', r));
     const get = range => new Promise((res, rej) => http.get({ host: '127.0.0.1', port: srv.address().port, path: '/package.json', headers: range ? { range } : {} }, r => { const b = []; r.on('data', d => b.push(d)); r.on('end', () => res({ status: r.statusCode, h: r.headers, body: Buffer.concat(b) })); }).on('error', rej));

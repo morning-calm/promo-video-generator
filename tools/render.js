@@ -19,7 +19,7 @@
    tools/build.js averages the S sub-frames of each frame, so anything that moves during the shutter is blurred like real film. */
 const { chromium } = require('playwright-core');
 const http = require('http'), fs = require('fs'), path = require('path'), os = require('os'), { spawn } = require('child_process');
-const { handler } = require('./serve'), { settings, ffmpegArgs } = require('./encode');
+const { handler } = require('./serve'), { settings, ffmpegArgs, loudness, describe } = require('./encode');
 const REPO = path.join(__dirname, '..');
 const arg = n => { const i = process.argv.indexOf('--' + n); return i < 0 ? null : (process.argv[i + 1] && !process.argv[i + 1].startsWith('--') ? process.argv[i + 1] : true); };
 
@@ -92,7 +92,10 @@ let ENC; if (MODE === 'mp4') { try { ENC = settings(CUES); } catch (e) { console
     const total = Math.round(FPS * DUR) * S, out = arg('mp4') === true ? path.join(OUT, NAME + '.mp4') : path.resolve(String(arg('mp4'))), wav = path.join(OUT, 'score.wav');
     fs.mkdirSync(path.dirname(out), { recursive: true });
     const first = await open(); await soundtrack(first);
-    const ff = spawn('ffmpeg', ffmpegArgs(ENC, { frames: '-', wav: fs.existsSync(wav) ? wav : null, out }), { stdio: ['pipe', 'inherit', 'inherit'] });
+    const score = fs.existsSync(wav) ? wav : null;
+    let L; try { L = loudness(ENC, score); } catch (e) { console.error(e.message); await b.close(); srv.close(); process.exit(1); }
+    if (L) console.log(describe(ENC, L));
+    const ff = spawn('ffmpeg', ffmpegArgs(ENC, { frames: '-', wav: score, out, af: L && L.filter }), { stdio: ['pipe', 'inherit', 'inherit'] });
     let ended = false; const ffDone = new Promise(res => ff.on('close', code => { ended = true; res(code); }));
     ff.stdin.on('error', () => {});  // a broken pipe means ffmpeg stopped; its exit code is reported below
     const shots = new Map(), wait = ms => new Promise(r => setTimeout(r, ms)); let next = 0, written = 0; const t0 = Date.now();
