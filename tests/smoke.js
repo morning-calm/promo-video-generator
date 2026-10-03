@@ -160,6 +160,14 @@ let s = ''; const u = new Uint8Array(b.buffer); for (let i = 0; i < u.length; i 
     assert(/No variant "nope"/.test(fails('node tools/render.js projects/_selftest_variant --stills 0.2 --variant nope') || ''), 'an unknown variant must fail');
   });
 
+  await ok('a page without <meta charset> is read as UTF-8', () => {
+    // The text is UTF-8 on disk; the check uses \u escapes, which read the same in any encoding.  Green = decoded correctly.
+    fixture('_selftest_utf8', { 'cues.json': JSON.stringify({ fps: 30, duration: 1, width: 64, height: 64 }),
+      'index.html': '<html><body style="margin:0;height:64px"><p id="t" style="display:none">日本語 Français</p><script>document.body.style.background = document.getElementById("t").textContent === "\\u65e5\\u672c\\u8a9e Fran\\u00e7ais" ? "#0f0" : "#f00"; window.seek = () => {}; window.__ready = true;</script></body></html>' });
+    sh('node tools/render.js projects/_selftest_utf8 --stills 0.5');
+    const c = pixel(path.join(REPO, 'out', '_selftest_utf8', 'stills', 't0.50.png'), 32, 32); assert(c[1] > 200 && c[0] < 80, `the page text was not read as UTF-8 (got ${c})`);
+  });
+
   await ok('the file server answers byte ranges', async () => {
     const srv = http.createServer(handler(REPO)).listen(0, '127.0.0.1'); await new Promise(r => srv.on('listening', r));
     const get = range => new Promise((res, rej) => http.get({ host: '127.0.0.1', port: srv.address().port, path: '/package.json', headers: range ? { range } : {} }, r => { const b = []; r.on('data', d => b.push(d)); r.on('end', () => res({ status: r.statusCode, h: r.headers, body: Buffer.concat(b) })); }).on('error', rej));

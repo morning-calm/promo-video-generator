@@ -1,6 +1,7 @@
-/* serve.js - the local file server render.js uses.  Serves files under a root folder, and answers byte ranges so <video> and <audio> can seek. */
+/* serve.js - the local file server render.js uses.  Serves files under a root folder, and answers byte ranges so <video> and <audio> can seek.
+   Text is declared UTF-8: without that, Chrome reads a page that has no <meta charset> as windows-1252 over HTTP (but as UTF-8 from disk). */
 const fs = require('fs'), path = require('path');
-const MIME = { '.js': 'text/javascript', '.css': 'text/css', '.html': 'text/html', '.woff2': 'font/woff2', '.woff': 'font/woff', '.ttf': 'font/ttf', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.json': 'application/json', '.mp4': 'video/mp4', '.gif': 'image/gif',
+const MIME = { '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.html': 'text/html; charset=utf-8', '.woff2': 'font/woff2', '.woff': 'font/woff', '.ttf': 'font/ttf', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.json': 'application/json; charset=utf-8', '.mp4': 'video/mp4', '.gif': 'image/gif',
   '.webm': 'video/webm', '.mov': 'video/quicktime', '.m4v': 'video/mp4', '.mp3': 'audio/mpeg', '.m4a': 'audio/mp4', '.wav': 'audio/wav', '.flac': 'audio/flac', '.ogg': 'audio/ogg' };
 
 // One file, honouring a single "Range: bytes=a-b" request.  Chrome only seeks a <video> whose server answers ranges with 206.
