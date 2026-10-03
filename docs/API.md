@@ -39,6 +39,8 @@ All optional; leave `render` out and nothing changes.
 
 `seek(t)` may return a Promise; `render.js` waits for it before the screenshot. That is how a scene with a `<video>` stays exact: set `currentTime`, wait for the `seeked` event and two `requestAnimationFrame`s, then resolve. The local server answers byte ranges, which Chrome needs before it will seek a `<video>` or `<audio>`.
 
+A page can make its own soundtrack instead of `sound.py` (for example with an `OfflineAudioContext`): define `window.__soundtrack = async () => base64WavString`. Such a page owns `out/<name>/score.wav`: `render.js --frames`, `--mp4` and `--sound` rewrite it from the page every run, so a stale score never reaches a build. Pages without it are untouched.
+
 ### `PV` - maths
 
 | | |
@@ -117,6 +119,7 @@ node  tools/render.js <project> --frames [--workers N] [--only 120-180] [--keep]
 python3 <project>/sound.py                                # -> out/<name>/score.wav
 node  tools/build.js <project> [out.mp4]                  # CRF=18 PRESET=slow by default
 node  tools/render.js <project> --mp4 [out.mp4]           # render + build in one pass, no frame files (run sound.py first)
+node  tools/render.js <project> --sound                   # score.wav from the page's window.__soundtrack()
 python3 tools/sheet.py out/sheet.png a.png b.png ...      # contact sheet (needs Pillow)
 npm test                                                  # end-to-end smoke test (~30 s)
 ```

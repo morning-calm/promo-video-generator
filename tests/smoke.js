@@ -68,6 +68,30 @@ window.__ready = true;
     assert(fs.readFileSync(path.join(o, 'two-step.mp4')).equals(fs.readFileSync(path.join(o, 'stream.mp4'))), 'streamed mp4 differs from frames + build');
   });
 
+  await ok('a page with window.__soundtrack() owns score.wav; a page without one leaves it alone', () => {
+    // A 1 s, 48 kHz, 16-bit stereo 440 Hz tone, built as a WAV file in the page.
+    const tone = `window.__soundtrack = async () => { const sr = 48000, n = sr, b = new DataView(new ArrayBuffer(44 + n * 4)); const w = (o, s) => { for (let i = 0; i < s.length; i++) b.setUint8(o + i, s.charCodeAt(i)); };
+w(0, 'RIFF'); b.setUint32(4, 36 + n * 4, true); w(8, 'WAVE'); w(12, 'fmt '); b.setUint32(16, 16, true); b.setUint16(20, 1, true); b.setUint16(22, 2, true); b.setUint32(24, sr, true); b.setUint32(28, sr * 4, true); b.setUint16(32, 4, true); b.setUint16(34, 16, true); w(36, 'data'); b.setUint32(40, n * 4, true);
+for (let i = 0; i < n; i++) { const v = Math.round(Math.sin(2 * Math.PI * 440 * i / sr) * 12000); b.setInt16(44 + i * 4, v, true); b.setInt16(46 + i * 4, v, true); }
+let s = ''; const u = new Uint8Array(b.buffer); for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000)); return btoa(s); };`;
+    const page = extra => `<!doctype html><html><body style="margin:0;height:64px;background:#246"><script>window.seek = () => {}; ${extra} window.__ready = true;</script></body></html>`;
+    const cues = JSON.stringify({ fps: 30, duration: 1, subframes: 1, width: 64, height: 64 });
+    fixture('_selftest_sound', { 'cues.json': cues, 'index.html': page(tone) });
+    const wav = path.join(REPO, 'out', '_selftest_sound', 'score.wav');
+    sh('node tools/render.js projects/_selftest_sound --sound'); const w = fs.readFileSync(wav);
+    assert.strictEqual(w.length, 44 + 48000 * 4, '--sound writes the page WAV'); assert.strictEqual(w.toString('latin1', 0, 4), 'RIFF');
+    fs.writeFileSync(wav, 'stale');
+    sh('node tools/render.js projects/_selftest_sound --mp4'); assert.strictEqual(fs.readFileSync(wav).length, 44 + 48000 * 4, '--mp4 rewrites score.wav from the page');
+    const a = JSON.parse(exe('ffprobe', ['-v', 'error', '-show_streams', '-of', 'json', path.join(REPO, 'out', '_selftest_sound', '_selftest_sound.mp4')])).streams.find(s => s.codec_type === 'audio');
+    assert(a && a.codec_name === 'aac' && Math.abs(parseFloat(a.duration) - 1) < 0.05, 'the mp4 carries the page soundtrack');
+    fixture('_selftest_nosound', { 'cues.json': cues, 'index.html': page('') });
+    const keep = path.join(REPO, 'out', '_selftest_nosound', 'score.wav'); fs.mkdirSync(path.dirname(keep), { recursive: true }); fs.writeFileSync(keep, 'from sound.py');
+    sh('node tools/render.js projects/_selftest_nosound --frames'); assert.strictEqual(fs.readFileSync(keep, 'utf8'), 'from sound.py', 'a page without __soundtrack must not touch score.wav');
+    assert(/no window\.__soundtrack/.test(fails('node tools/render.js projects/_selftest_nosound --sound') || ''), '--sound on a page without a soundtrack must fail');
+    fixture('_selftest_badsound', { 'cues.json': cues, 'index.html': page('window.__soundtrack = () => "not a wav";') });
+    assert(/must return a base64-encoded WAV/.test(fails('node tools/render.js projects/_selftest_badsound --sound') || ''), 'a soundtrack that is not a WAV must fail');
+  });
+
   await ok('the file server answers byte ranges', async () => {
     const srv = http.createServer(handler(REPO)).listen(0, '127.0.0.1'); await new Promise(r => srv.on('listening', r));
     const get = range => new Promise((res, rej) => http.get({ host: '127.0.0.1', port: srv.address().port, path: '/package.json', headers: range ? { range } : {} }, r => { const b = []; r.on('data', d => b.push(d)); r.on('end', () => res({ status: r.statusCode, h: r.headers, body: Buffer.concat(b) })); }).on('error', rej));

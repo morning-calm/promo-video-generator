@@ -10,6 +10,7 @@
 - `render.sampling: "centre"` places each sub-frame at the middle of an equal slice of the shutter instead of spacing them from opening to closing; the default is unchanged.
 - `render.crf` and `render.preset` keep a project's encoder settings with the project; `CRF=` / `PRESET=` in the environment still win. The ffmpeg command now lives in `tools/encode.js` (same arguments: the starter and Pitchcraft reference builds are byte-identical).
 - `render.js --mp4 [out.mp4]` renders and encodes in one pass: sub-frames are piped to ffmpeg in order instead of written to disk, with the same encode as `build.js` (`npm test` checks the two mp4s are byte-identical). Docs: `PV_CHANNEL=""` launches Playwright's headless shell, which draws WebGL in software; `PV_CHANNEL=chromium` is Playwright's full Chromium.
+- A page can supply its own soundtrack: `window.__soundtrack = async () => base64Wav`. `render.js --sound` writes it to `out/<name>/score.wav`, and `--frames` / `--mp4` rewrite it every run so a stale score never reaches a build. Pages without it (the `sound.py` workflow) are untouched.
 
 ## 1.0.0 - 2026-10-02
 - First release, extracted from the Pitchcraft repository where the toolkit was built for its launch film.
