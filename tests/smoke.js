@@ -154,7 +154,12 @@ let s = ''; const u = new Uint8Array(b.buffer); for (let i = 0; i < u.length; i 
     assert.deepStrictEqual(size(path.join(tall, 'stills', 't0.20.png')), [48, 64]); assert(pixel(path.join(tall, 'stills', 't0.20.png'), 10, 10)[2] > 200, 'the variant renders tall.html');
     sh('node tools/render.js projects/_selftest_variant --frames'); assert.strictEqual(fs.readdirSync(path.join(base, 'frames')).length, 15, 'the base stops at its outro');
     sh('node tools/render.js projects/_selftest_variant --frames --variant tall'); assert.strictEqual(fs.readdirSync(path.join(tall, 'frames')).length, 30, 'outro: null removes the outro');
-    sh('node tools/build.js projects/_selftest_variant --variant tall');
+    // A variant without a score.wav of its own uses the base cut's (sound.py writes only that one); with its own, it uses its own.
+    exe('ffmpeg', ['-v', 'error', '-f', 'lavfi', '-i', 'sine=f=440:d=1.2', '-ac', '2', '-ar', '48000', path.join(base, 'score.wav')]);
+    const sharedLog = sh('node tools/build.js projects/_selftest_variant --variant tall'); assert(/using the base cut's/.test(sharedLog), 'a variant without its own score must say it uses the base one');
+    assert(JSON.parse(exe('ffprobe', ['-v', 'error', '-show_streams', '-of', 'json', path.join(tall, '_selftest_variant-tall.mp4')])).streams.some(s => s.codec_type === 'audio'), 'the variant carries the shared score');
+    fs.copyFileSync(path.join(base, 'score.wav'), path.join(tall, 'score.wav'));
+    assert(!/using the base cut's/.test(sh('node tools/build.js projects/_selftest_variant --variant tall')), 'a variant with its own score.wav uses it');
     const v = JSON.parse(exe('ffprobe', ['-v', 'error', '-show_streams', '-of', 'json', path.join(tall, '_selftest_variant-tall.mp4')])).streams[0];
     assert.deepStrictEqual([v.width, v.height, v.nb_frames], [48, 64, '30']);
     assert(/No variant "nope"/.test(fails('node tools/render.js projects/_selftest_variant --stills 0.2 --variant nope') || ''), 'an unknown variant must fail');

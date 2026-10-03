@@ -20,7 +20,7 @@
    tools/build.js averages the S sub-frames of each frame, so anything that moves during the shutter is blurred like real film. */
 const { chromium } = require('playwright-core');
 const http = require('http'), fs = require('fs'), path = require('path'), os = require('os'), { spawn } = require('child_process');
-const { handler } = require('./serve'), { settings, ffmpegArgs, loudness, describe } = require('./encode'), { loadCues } = require('./cues');
+const { handler } = require('./serve'), { settings, ffmpegArgs, loudness, describe } = require('./encode'), { loadCues, findScore } = require('./cues');
 const REPO = path.join(__dirname, '..');
 const arg = n => { const i = process.argv.indexOf('--' + n); return i < 0 ? null : (process.argv[i + 1] && !process.argv[i + 1].startsWith('--') ? process.argv[i + 1] : true); };
 
@@ -29,7 +29,7 @@ if (!projectArg || !(arg('stills') || arg('frames') || arg('mp4') || arg('sound'
 if (arg('variant') === true) { console.error('--variant needs a name'); process.exit(2); }
 const PROJECT = path.resolve(projectArg);
 if (!PROJECT.startsWith(REPO + path.sep)) { console.error('The project folder must live inside this repo (so ../../lib/motion.js resolves). Try projects/<name>.'); process.exit(2); }
-let CUES, NAME; try { ({ cues: CUES, name: NAME } = loadCues(PROJECT, arg('variant'))); } catch (e) { console.error(e.message); process.exit(2); }
+let CUES, NAME, BASE; try { ({ cues: CUES, name: NAME, base: BASE } = loadCues(PROJECT, arg('variant'))); } catch (e) { console.error(e.message); process.exit(2); }
 const OUT = path.join(REPO, 'out', NAME), R = CUES.render || {};
 const PAGE = R.page || 'index.html';
 if (!fs.existsSync(path.join(PROJECT, PAGE.split(/[?#]/)[0]))) { console.error(`No ${PAGE.split(/[?#]/)[0]} in ${PROJECT}`); process.exit(2); }
@@ -90,10 +90,11 @@ let ENC; if (MODE === 'mp4' || MODE === 'frames') { try { ENC = settings(CUES, P
     await Promise.all(Array.from({ length: workers }, (_, k) => run(k === 0 ? first : null))); console.log(`frames done: ${todo.length} in ${Math.round((Date.now() - t0) / 1000)}s -> ${path.relative(REPO, OUT)}/frames`);
   } else if (MODE === 'mp4') {
     // Workers screenshot sub-frames in parallel; the writer feeds them to ffmpeg strictly in order, holding at most a few per worker in memory.
-    const total = (ENC.last - ENC.first) * S, out = arg('mp4') === true ? path.join(OUT, NAME + '.mp4') : path.resolve(String(arg('mp4'))), wav = path.join(OUT, 'score.wav');
+    const total = (ENC.last - ENC.first) * S, out = arg('mp4') === true ? path.join(OUT, NAME + '.mp4') : path.resolve(String(arg('mp4')));
     fs.mkdirSync(path.dirname(out), { recursive: true });
     const first = await open(); await soundtrack(first);
-    const score = fs.existsSync(wav) ? wav : null;
+    const found = findScore(path.join(REPO, 'out'), NAME, BASE), score = found && found.file;
+    if (found && found.shared) console.log(`(no score.wav of its own - using the base cut's ${score})`);
     let L; try { L = loudness(ENC, score); } catch (e) { console.error(e.message); await b.close(); srv.close(); process.exit(1); }
     if (L) console.log(describe(ENC, L));
     const ff = spawn('ffmpeg', ffmpegArgs(ENC, { frames: '-', wav: score, out, af: L && L.filter }), { stdio: ['pipe', 'inherit', 'inherit'] });
