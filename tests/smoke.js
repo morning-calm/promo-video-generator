@@ -104,7 +104,7 @@ let s = ''; const u = new Uint8Array(b.buffer); for (let i = 0; i < u.length; i 
     sh('node tools/render.js projects/_selftest_loud --frames'); sh('node tools/build.js projects/_selftest_loud');
     const report = sh(`node tools/loudness.js ${path.join('out', '_selftest_loud', '_selftest_loud.mp4')}`);
     const lufs = parseFloat((/integrated (-?[\d.]+) LUFS/.exec(report) || [])[1]), peak = parseFloat((/sample peak (-?[\d.]+) dBFS/.exec(report) || [])[1]);
-    assert(Math.abs(lufs + 16) <= 0.5, `integrated loudness should be -16 LUFS, the report says ${lufs}`);
+    assert(Math.abs(lufs + 16) <= 0.2, `integrated loudness should be -16 LUFS, the report says ${lufs}`);
     assert(peak <= -1, `the click should be held near -2 dBFS (AAC can overshoot by up to 1 dB), the report says ${peak}`);
     // The same filter on the wav alone: the click must still start at sample 24000, so the limiter's look-ahead delay has been trimmed off.
     const L = require('../tools/encode').loudness({ loudness: -16, peak: -2, duration: 1 }, wav), filtered = path.join(o, 'filtered.wav');
@@ -112,6 +112,13 @@ let s = ''; const u = new Uint8Array(b.buffer); for (let i = 0; i < u.length; i 
     const raw = execFileSync('ffmpeg', ['-v', 'error', '-i', filtered, '-f', 's16le', '-']);
     let onset = -1; for (let k = 0; k < raw.length / 4; k++) if (Math.abs(raw.readInt16LE(k * 4)) > 16000) { onset = k; break; }
     assert.strictEqual(onset, CLICK, `the click should start at sample ${CLICK}, it starts at ${onset}`);
+    // A score that is loud for 5 s and then quiet for 3 s: integrated loudness does not depend on that order, but loudnorm's figure does
+    // (0.8 LU off here), so this catches a build that aims with one meter while loudness.js reports with another.
+    const step = path.join(o, 'step.wav'), stepOut = path.join(o, 'step-levelled.wav');
+    exe('ffmpeg', ['-v', 'error', '-y', '-f', 'lavfi', '-i', 'sine=f=440:r=48000:d=5,volume=0.1', '-f', 'lavfi', '-i', 'sine=f=440:r=48000:d=3,volume=0.05', '-filter_complex', '[0][1]concat=n=2:v=0:a=1', '-ac', '2', step]);
+    exe('ffmpeg', ['-v', 'error', '-y', '-i', step, '-af', require('../tools/encode').loudness({ loudness: -16, peak: -2, duration: 8 }, step).filter, stepOut]);
+    const stepLufs = parseFloat((/integrated (-?[\d.]+) LUFS/.exec(sh(`node tools/loudness.js ${stepOut}`)) || [])[1]);
+    assert(Math.abs(stepLufs + 16) <= 0.2, `a loud-then-quiet score should be levelled to -16 LUFS, the report says ${stepLufs}`);
     fixture('_selftest_loud_bad', { 'cues.json': JSON.stringify({ fps: 30, duration: 1, render: { loudness: 3 } }) });
     assert(/render\.loudness must be/.test(fails('node tools/build.js projects/_selftest_loud_bad') || ''), 'a loudness target above 0 LUFS must fail');
   });

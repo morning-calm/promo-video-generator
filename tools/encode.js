@@ -48,7 +48,8 @@ const videoFilter = s => {
 // render.peak.  Limiting a loud peak also lowers the loudness around it, so the gain is corrected against the limited result (up to 4 times,
 // until within 0.1 LU); "reached" is the integrated loudness of the filtered score over the video's duration.  alimiter delays its output by
 // floor(rate * attack) - 1 samples (measured at 44.1 and 48 kHz, 2 and 5 ms), so that many are trimmed back off the front.
-// Returns null without render.loudness or a score.
+// Loudness is measured with ffmpeg's ebur128 filter, the meter tools/loudness.js reports with: loudnorm's own figure can be 0.5 LU
+// away from it on a short score with quiet passages.  Returns null without render.loudness or a score.
 const ATTACK_MS = 2;
 const loudness = (s, wav) => {
   if (s.loudness === undefined || !wav) return null;
@@ -56,8 +57,9 @@ const loudness = (s, wav) => {
   if (!(rate > 0)) throw new Error(`could not read the sample rate of ${wav}`);
   const delay = Math.floor(rate * ATTACK_MS / 1000) - 1;
   const measure = af => {
-    const r = spawnSync('ffmpeg', ['-hide_banner', '-nostats', '-i', wav, '-af', `${af ? af + ',' : ''}atrim=end=${s.duration},loudnorm=I=-24:TP=-2:print_format=json`, '-f', 'null', '-'], { encoding: 'utf8' });
-    const m = (r.stderr || '').match(/\{[^{}]*"input_i"[^{}]*\}/); return m ? parseFloat(JSON.parse(m[0]).input_i) : NaN;
+    const r = spawnSync('ffmpeg', ['-hide_banner', '-nostats', '-i', wav, '-af', `${af ? af + ',' : ''}atrim=end=${s.duration},ebur128=framelog=quiet`, '-f', 'null', '-'], { encoding: 'utf8' });
+    const sum = (r.stderr || '').slice((r.stderr || '').lastIndexOf('Summary:')), m = sum.match(/I:\s+(-?[\d.]+) LUFS/), i = m ? parseFloat(m[1]) : NaN;
+    return i > -70 ? i : NaN;   // ebur128 reports -70.0 for silence
   };
   const chain = g => `volume=${g.toFixed(2)}dB,alimiter=limit=${Math.pow(10, s.peak / 20).toFixed(5)}:attack=${ATTACK_MS}:release=80:level=false,atrim=start_sample=${delay},asetpts=PTS-STARTPTS`;
   const measured = measure(null);
