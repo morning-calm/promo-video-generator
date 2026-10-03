@@ -15,6 +15,7 @@
 - `render.intro` / `render.outro` splice a video clip (a logo sting, a title card) before `until` or from `at`, frame-exact: trimmed, scaled, converted to the video's frame rate and held on its last frame if short. The page is only rendered for the frames between, in `--frames`, `--mp4` and `build.js` alike.
 - `render.variants` + `--variant name` keep several cuts of one film (16:9 and 9:16) in one project: a variant overrides any top-level key or render setting, `null` removes a setting, and its output goes to `out/<name>-<variant>/` so cuts never overwrite each other; a variant with no `score.wav` of its own uses the base cut's, and says so. Reading `cues.json` now lives in `tools/cues.js`.
 - The local server declares text files UTF-8. Over HTTP, Chrome read a page without `<meta charset>` as windows-1252, so accented and Japanese text rendered garbled in the engine while the same page looked right opened from disk.
+- The local server keeps requests inside its root even when the root is given with forward slashes on Windows or with a trailing slash, and refuses a sibling folder whose name starts like the root (`<root>-other/`), which the old text-prefix check let through.
 
 ## 1.0.0 - 2026-10-02
 - First release, extracted from the Pitchcraft repository where the toolkit was built for its launch film.

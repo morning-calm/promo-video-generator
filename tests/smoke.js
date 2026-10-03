@@ -173,6 +173,19 @@ let s = ''; const u = new Uint8Array(b.buffer); for (let i = 0; i < u.length; i 
     const c = pixel(path.join(REPO, 'out', '_selftest_utf8', 'stills', 't0.50.png'), 32, 32); assert(c[1] > 200 && c[0] < 80, `the page text was not read as UTF-8 (got ${c})`);
   });
 
+  await ok('the file server stays inside its root, however the root is written', async () => {
+    const root = fixture('_selftest_srv', { 'index.html': 'inside' }); fixture('_selftest_srv-evil', { 'secret.txt': 'outside' });
+    for (const given of [root, root.split(path.sep).join('/') + '/']) {
+      const srv = http.createServer(handler(given)).listen(0, '127.0.0.1'); await new Promise(r => srv.on('listening', r));
+      const get = p => new Promise((res, rej) => http.get({ host: '127.0.0.1', port: srv.address().port, path: p }, r => { const b = []; r.on('data', d => b.push(d)); r.on('end', () => res({ status: r.statusCode, body: Buffer.concat(b).toString() })); }).on('error', rej));
+      try {
+        const home = await get('/'); assert.deepStrictEqual([home.status, home.body], [200, 'inside'], `the root's index.html (root given as ${given})`);
+        assert.strictEqual((await get('/../_selftest_srv-evil/secret.txt')).status, 403, `a sibling folder whose name starts like the root must be refused (root given as ${given})`);
+        assert.strictEqual((await get('/../../package.json')).status, 403, 'a path above the root must be refused');
+      } finally { srv.close(); }
+    }
+  });
+
   await ok('the file server answers byte ranges', async () => {
     const srv = http.createServer(handler(REPO)).listen(0, '127.0.0.1'); await new Promise(r => srv.on('listening', r));
     const get = range => new Promise((res, rej) => http.get({ host: '127.0.0.1', port: srv.address().port, path: '/package.json', headers: range ? { range } : {} }, r => { const b = []; r.on('data', d => b.push(d)); r.on('end', () => res({ status: r.statusCode, h: r.headers, body: Buffer.concat(b) })); }).on('error', rej));

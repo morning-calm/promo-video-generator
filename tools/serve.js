@@ -17,9 +17,13 @@ const serveFile = (q, r, p) => fs.stat(p, (e, st) => {
 });
 
 // Request handler for http.createServer: the URL path is a file under root; anything resolving outside root is refused.
-const handler = root => (q, r) => {
-  let p = path.join(root, decodeURIComponent(q.url.split('?')[0])); if (!p.startsWith(root)) { r.statusCode = 403; return r.end(); } if (p.endsWith(path.sep)) p += 'index.html';
-  serveFile(q, r, p);
+// root is normalised first, and the check includes the separator, so neither "D:/x" against "D:\x" nor a sibling folder "root-other" slips through.
+const handler = root => {
+  const base = path.resolve(root);
+  return (q, r) => {
+    let p = path.join(base, decodeURIComponent(q.url.split('?')[0])); if (p !== base && !p.startsWith(base + path.sep)) { r.statusCode = 403; return r.end(); } if (p.endsWith(path.sep) || p === base) p = path.join(p, 'index.html');
+    serveFile(q, r, p);
+  };
 };
 
 module.exports = { MIME, handler };
