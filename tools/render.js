@@ -12,8 +12,8 @@
    tools/build.js averages the S sub-frames of each frame, so anything that moves during the shutter is blurred like real film. */
 const { chromium } = require('playwright-core');
 const http = require('http'), fs = require('fs'), path = require('path'), os = require('os');
+const { handler } = require('./serve');
 const REPO = path.join(__dirname, '..');
-const MIME = { '.js': 'text/javascript', '.css': 'text/css', '.html': 'text/html', '.woff2': 'font/woff2', '.woff': 'font/woff', '.ttf': 'font/ttf', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.json': 'application/json', '.mp4': 'video/mp4', '.gif': 'image/gif' };
 const arg = n => { const i = process.argv.indexOf('--' + n); return i < 0 ? null : (process.argv[i + 1] && !process.argv[i + 1].startsWith('--') ? process.argv[i + 1] : true); };
 
 const projectArg = process.argv[2] && !process.argv[2].startsWith('--') ? process.argv[2] : null;
@@ -27,10 +27,7 @@ const FPS = CUES.fps || 60, DUR = CUES.duration, S = CUES.subframes || 4, SHUTTE
 if (!DUR) { console.error('cues.json needs "duration" (seconds)'); process.exit(2); }
 
 (async () => {
-  const srv = http.createServer((q, r) => {
-    let p = path.join(REPO, decodeURIComponent(q.url.split('?')[0])); if (!p.startsWith(REPO)) { r.statusCode = 403; return r.end(); } if (p.endsWith(path.sep)) p += 'index.html';
-    fs.readFile(p, (e, d) => { if (e) { r.statusCode = 404; r.end(); } else { r.setHeader('content-type', MIME[path.extname(p)] || 'application/octet-stream'); r.end(d); } });
-  }).listen(0, '127.0.0.1');
+  const srv = http.createServer(handler(REPO)).listen(0, '127.0.0.1');
   await new Promise(r => srv.on('listening', r));
   const url = `http://127.0.0.1:${srv.address().port}/${path.relative(REPO, PROJECT).split(path.sep).join('/')}/index.html`;
   const channel = process.env.PV_CHANNEL === undefined ? 'chrome' : process.env.PV_CHANNEL;

@@ -5,6 +5,7 @@
 - `PV_PYTHON` picks the Python for `doctor.js` and `npm test` (default `python3`, or `python` on Windows, where `python3` is usually the Microsoft Store placeholder).
 - `doctor.js` checks the browser by launching it the way `render.js` does, so it finds Chrome on Windows and catches a missing bundled Chromium when `PV_CHANNEL=""`.
 - `npm test` also covers `tools/new-project.js`; `tools/sheet.py` labels tiles correctly from Windows paths.
+- Video and audio in a scene can seek: the local server (now `tools/serve.js`) answers byte ranges with 206, which Chrome needs before it seeks a `<video>`. Before this, a test scene that set `video.currentTime` kept showing the first frame. Also serves `.webm .mov .m4v .mp3 .m4a .wav .flac .ogg` with their media types. `npm test` covers ranges and a seeking video.
 
 ## 1.0.0 - 2026-10-02
 - First release, extracted from the Pitchcraft repository where the toolkit was built for its launch film.

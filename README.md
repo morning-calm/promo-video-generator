@@ -64,7 +64,7 @@ node tools/build.js examples/pitchcraft                         # -> out/pitchcr
 
 1. **`cues.json`** - `duration`, `fps`, `subframes`, size, and your named moments (`"hit": 2.45`).
 2. **`scene.js`** - sets `window.seek = t => ...`, positioning every element for time `t` with the helpers in `lib/motion.js`: easings, springs, seeded random, `put()`, per-letter kinetic type, camera shake.
-3. **`render.js`** - serves the repo on a private local port, opens the scene in headless Chrome (several parallel pages), steps `t`, screenshots. Sub-frame `s` of `S` for frame `f` is sampled at `t = (f + (s/(S-1) - 0.5) * shutter) / fps`.
+3. **`render.js`** - serves the repo on a private local port (with byte ranges, so a `<video>` in the scene can seek), opens the scene in headless Chrome (several parallel pages), steps `t`, screenshots. Sub-frame `s` of `S` for frame `f` is sampled at `t = (f + (s/(S-1) - 0.5) * shutter) / fps`.
 4. **`sound.py`** - places synthesised instruments (`lib/synth.py`) at cue times and masters the result (reverb, loudness, soft limiter).
 5. **`build.js`** - averages sub-frames with ffmpeg `tmix` (that average is the motion blur), converts to TV-range BT.709 `yuv420p`, encodes H.264 + AAC with `+faststart`.
 

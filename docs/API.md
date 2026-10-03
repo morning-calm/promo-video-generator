@@ -25,6 +25,8 @@ The single source of timing for picture **and** sound.
 
 `render.js` waits up to 60 s for `window.__ready === true`, fails on any `pageerror`, and reports any HTTP 4xx (a missing image or font) with its URL.
 
+`seek(t)` may return a Promise; `render.js` waits for it before the screenshot. That is how a scene with a `<video>` stays exact: set `currentTime`, wait for the `seeked` event and two `requestAnimationFrame`s, then resolve. The local server answers byte ranges, which Chrome needs before it will seek a `<video>` or `<audio>`.
+
 ### `PV` - maths
 
 | | |
