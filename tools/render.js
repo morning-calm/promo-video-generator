@@ -13,23 +13,24 @@
    --frames, --mp4 and --sound rewrite it from the page every run.  Pages without it keep using sound.py.
    <project> is a folder (under this repo) containing index.html and cues.json.  Optional env: PV_CHANNEL=chrome (default) | chromium (Playwright's) | "" (Playwright's headless shell).
    cues.json "render": { "page": "dist/reel.html#clean" } renders another page of the project (path relative to the project; ?query and #hash are kept).
+   [--variant name]      any mode: apply render.variants.<name> from cues.json (tools/cues.js); output goes to out/<name>-<variant>/
 
    Frame f, sub-frame s of S is rendered at   t = (f + (s/(S-1) - 0.5) * shutter) / fps   (shutter = fraction of a frame the "camera" is open, default 0.5).
    With "render": { "sampling": "centre" } it is   t = (f + ((s+0.5)/S - 0.5) * shutter) / fps   : the middle of S equal slices of the open shutter.
    tools/build.js averages the S sub-frames of each frame, so anything that moves during the shutter is blurred like real film. */
 const { chromium } = require('playwright-core');
 const http = require('http'), fs = require('fs'), path = require('path'), os = require('os'), { spawn } = require('child_process');
-const { handler } = require('./serve'), { settings, ffmpegArgs, loudness, describe } = require('./encode');
+const { handler } = require('./serve'), { settings, ffmpegArgs, loudness, describe } = require('./encode'), { loadCues } = require('./cues');
 const REPO = path.join(__dirname, '..');
 const arg = n => { const i = process.argv.indexOf('--' + n); return i < 0 ? null : (process.argv[i + 1] && !process.argv[i + 1].startsWith('--') ? process.argv[i + 1] : true); };
 
 const projectArg = process.argv[2] && !process.argv[2].startsWith('--') ? process.argv[2] : null;
-if (!projectArg || !(arg('stills') || arg('frames') || arg('mp4') || arg('sound'))) { console.log('usage: node tools/render.js <project-dir> (--stills 1,2.5 | --frames [--workers N] [--only a-b] [--keep] | --mp4 [out.mp4] [--workers N] | --sound)'); process.exit(2); }
+if (!projectArg || !(arg('stills') || arg('frames') || arg('mp4') || arg('sound'))) { console.log('usage: node tools/render.js <project-dir> (--stills 1,2.5 | --frames [--workers N] [--only a-b] [--keep] | --mp4 [out.mp4] [--workers N] | --sound) [--variant name]'); process.exit(2); }
+if (arg('variant') === true) { console.error('--variant needs a name'); process.exit(2); }
 const PROJECT = path.resolve(projectArg);
 if (!PROJECT.startsWith(REPO + path.sep)) { console.error('The project folder must live inside this repo (so ../../lib/motion.js resolves). Try projects/<name>.'); process.exit(2); }
-const NAME = path.basename(PROJECT), OUT = path.join(REPO, 'out', NAME);
-if (!fs.existsSync(path.join(PROJECT, 'cues.json'))) { console.error('No cues.json in ' + PROJECT); process.exit(2); }
-const CUES = JSON.parse(fs.readFileSync(path.join(PROJECT, 'cues.json'), 'utf8')), R = CUES.render || {};
+let CUES, NAME; try { ({ cues: CUES, name: NAME } = loadCues(PROJECT, arg('variant'))); } catch (e) { console.error(e.message); process.exit(2); }
+const OUT = path.join(REPO, 'out', NAME), R = CUES.render || {};
 const PAGE = R.page || 'index.html';
 if (!fs.existsSync(path.join(PROJECT, PAGE.split(/[?#]/)[0]))) { console.error(`No ${PAGE.split(/[?#]/)[0]} in ${PROJECT}`); process.exit(2); }
 const FPS = CUES.fps || 60, DUR = CUES.duration, S = CUES.subframes || 4, SHUTTER = CUES.shutter === undefined ? 0.5 : CUES.shutter, W = CUES.width || 1920, H = CUES.height || 1080, DPR = CUES.dpr || 1;

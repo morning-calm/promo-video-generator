@@ -142,6 +142,24 @@ let s = ''; const u = new Uint8Array(b.buffer); for (let i = 0; i < u.length; i 
     assert(/render\.outro\.file not found/.test(fails('node tools/render.js projects/_selftest_splice --frames') || ''), 'a missing clip must fail');
   });
 
+  await ok('render.variants: --variant applies its overrides, null removes a setting, output goes to out/<name>-<variant>/', () => {
+    const page = colour => `<!doctype html><html><body style="margin:0;height:100vh;background:${colour}"><script>window.seek = () => {}; window.__ready = true;</script></body></html>`;
+    const p = fixture('_selftest_variant', { 'wide.html': page('#f00'), 'tall.html': page('#00f'), 'cues.json': JSON.stringify({ fps: 30, duration: 1, subframes: 1, width: 64, height: 48,
+      render: { page: 'wide.html', outro: { file: 'outro.mp4', at: 0.5 }, variants: { tall: { width: 48, height: 64, render: { page: 'tall.html', outro: null } } } } }) });
+    exe('ffmpeg', ['-v', 'error', '-f', 'lavfi', '-i', 'color=lime:s=64x48:r=30:d=1', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', path.join(p, 'outro.mp4')]);
+    const size = png => { const b = fs.readFileSync(png); return [b.readUInt32BE(16), b.readUInt32BE(20)]; };
+    const base = path.join(REPO, 'out', '_selftest_variant'), tall = path.join(REPO, 'out', '_selftest_variant-tall');
+    sh('node tools/render.js projects/_selftest_variant --stills 0.2'); sh('node tools/render.js projects/_selftest_variant --stills 0.2 --variant tall');
+    assert.deepStrictEqual(size(path.join(base, 'stills', 't0.20.png')), [64, 48]); assert(pixel(path.join(base, 'stills', 't0.20.png'), 10, 10)[0] > 200, 'the base renders wide.html');
+    assert.deepStrictEqual(size(path.join(tall, 'stills', 't0.20.png')), [48, 64]); assert(pixel(path.join(tall, 'stills', 't0.20.png'), 10, 10)[2] > 200, 'the variant renders tall.html');
+    sh('node tools/render.js projects/_selftest_variant --frames'); assert.strictEqual(fs.readdirSync(path.join(base, 'frames')).length, 15, 'the base stops at its outro');
+    sh('node tools/render.js projects/_selftest_variant --frames --variant tall'); assert.strictEqual(fs.readdirSync(path.join(tall, 'frames')).length, 30, 'outro: null removes the outro');
+    sh('node tools/build.js projects/_selftest_variant --variant tall');
+    const v = JSON.parse(exe('ffprobe', ['-v', 'error', '-show_streams', '-of', 'json', path.join(tall, '_selftest_variant-tall.mp4')])).streams[0];
+    assert.deepStrictEqual([v.width, v.height, v.nb_frames], [48, 64, '30']);
+    assert(/No variant "nope"/.test(fails('node tools/render.js projects/_selftest_variant --stills 0.2 --variant nope') || ''), 'an unknown variant must fail');
+  });
+
   await ok('the file server answers byte ranges', async () => {
     const srv = http.createServer(handler(REPO)).listen(0, '127.0.0.1'); await new Promise(r => srv.on('listening', r));
     const get = range => new Promise((res, rej) => http.get({ host: '127.0.0.1', port: srv.address().port, path: '/package.json', headers: range ? { range } : {} }, r => { const b = []; r.on('data', d => b.push(d)); r.on('end', () => res({ status: r.statusCode, h: r.headers, body: Buffer.concat(b) })); }).on('error', rej));

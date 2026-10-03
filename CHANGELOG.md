@@ -13,6 +13,7 @@
 - A page can supply its own soundtrack: `window.__soundtrack = async () => base64Wav`. `render.js --sound` writes it to `out/<name>/score.wav`, and `--frames` / `--mp4` rewrite it every run so a stale score never reaches a build. Pages without it (the `sound.py` workflow) are untouched.
 - `render.loudness` (target LUFS) and `render.peak` (limiter ceiling, default -2 dBFS) level the soundtrack at build time: one gain, a peak limiter, and a gain correction measured against the limited result (a loud peak's limiting lowers the loudness around it). ffmpeg's `alimiter` delays its output by `floor(rate * attack) - 1` samples, which is trimmed back off so the audio stays in sync. New `tools/loudness.js` prints a loudness report for any wav or mp4. Off unless set.
 - `render.intro` / `render.outro` splice a video clip (a logo sting, a title card) before `until` or from `at`, frame-exact: trimmed, scaled, converted to the video's frame rate and held on its last frame if short. The page is only rendered for the frames between, in `--frames`, `--mp4` and `build.js` alike.
+- `render.variants` + `--variant name` keep several cuts of one film (16:9 and 9:16) in one project: a variant overrides any top-level key or render setting, `null` removes a setting, and its output goes to `out/<name>-<variant>/` so cuts never overwrite each other. Reading `cues.json` now lives in `tools/cues.js`.
 
 ## 1.0.0 - 2026-10-02
 - First release, extracted from the Pitchcraft repository where the toolkit was built for its launch film.

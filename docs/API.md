@@ -31,6 +31,7 @@ All optional; leave `render` out and nothing changes.
 | `peak` | -2 | with `loudness`: sample-peak ceiling in dBFS for the limiter. Below 0 leaves room for the AAC encoder's overshoot (about 1 dB) |
 | `intro` | off | `{ "file": "sting.mp4", "until": 2.0, "trim": 0 }`: the picture before `until` seconds comes from a video clip (path relative to the project), starting `trim` seconds into it and holding its last frame if it runs short. The page is only rendered from `until` on. The clip's own audio is not used |
 | `outro` | off | `{ "file": "logo.mp4", "at": 12.5, "trim": 0.16 }`: the picture from `at` seconds to the end comes from a clip, the same way; the page is only rendered up to `at`. A clip is scaled to the video's size, so give it the same aspect ratio |
+| `variants` | none | named overrides for other cuts of the same film: `{ "vertical": { "width": 1080, "height": 1920, "render": { "page": "vertical.html", "outro": null } } }`. `--variant vertical` on `render.js` and `build.js` applies one: it can override any top-level key and any `render` setting, `null` removes a setting, and its output goes to `out/<name>-vertical/` |
 
 ## Scene contract (browser)
 
