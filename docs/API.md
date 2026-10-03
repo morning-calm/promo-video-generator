@@ -25,6 +25,8 @@ All optional; leave `render` out and nothing changes.
 |---|---|---|
 | `page` | `index.html` | the page to render, relative to the project; a `?query` or `#hash` is passed to the page (`"dist/reel.html#clean"`) |
 | `sampling` | `ends` | where the sub-frames sit in the open shutter: `ends` spaces them from opening to closing, `centre` puts each at the middle of one of `subframes` equal slices (a slightly shorter blur: `(S-1)/S` of the shutter between first and last sample) |
+| `crf` | 18 | x264 quality (0-51, lower = bigger and better). `CRF=` in the environment wins, for one-off builds |
+| `preset` | `slow` | x264 speed preset (`ultrafast` ... `veryslow`). `PRESET=` in the environment wins |
 
 ## Scene contract (browser)
 

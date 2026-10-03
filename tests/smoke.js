@@ -34,6 +34,24 @@ const OUT = path.join(REPO, 'out', '_selftest');
     assert.strictEqual(v.nb_frames, '30'); assert(Math.abs(parseFloat(v.duration) - 1) < 0.05); assert.strictEqual(a.codec_name, 'aac');
   });
 
+  await ok('crf and preset come from render settings, and CRF / PRESET in the environment win', () => {
+    // x264 writes its settings into the stream: "crf=18.0", and subme=8 for preset slow, 7 for medium.
+    const x264 = mp4 => (/options: ([^\0]*)/.exec(fs.readFileSync(mp4).toString('latin1')) || [, ''])[1];
+    const cuesFile = path.join(P, 'cues.json'), base = JSON.parse(fs.readFileSync(cuesFile, 'utf8'));
+    const build = (render, env, name) => {
+      fs.writeFileSync(cuesFile, JSON.stringify(render ? { ...base, render } : base));
+      execFileSync('node', ['tools/build.js', 'projects/_selftest', path.join(OUT, name)], { cwd: REPO, stdio: 'pipe', env: { ...process.env, CRF: '', PRESET: '', ...env } });
+      return x264(path.join(OUT, name));
+    };
+    try {
+      const d = build(null, {}, 'default.mp4'); assert(/crf=18\.0/.test(d) && /subme=8/.test(d), `defaults are crf 18 / slow: ${d.slice(0, 80)}`);
+      const r = build({ crf: 30, preset: 'medium' }, {}, 'render.mp4'); assert(/crf=30\.0/.test(r) && /subme=7/.test(r), 'render.crf 30 and render.preset medium');
+      const e = build({ crf: 30, preset: 'medium' }, { CRF: '22', PRESET: 'slow' }, 'env.mp4'); assert(/crf=22\.0/.test(e) && /subme=8/.test(e), 'CRF and PRESET override render settings');
+      fs.writeFileSync(cuesFile, JSON.stringify({ ...base, render: { preset: 'quick' } }));
+      const out = fails('node tools/build.js projects/_selftest'); assert(out && /preset must be one of/.test(out), 'an unknown preset must fail');
+    } finally { fs.writeFileSync(cuesFile, JSON.stringify(base)); }
+  });
+
   await ok('the file server answers byte ranges', async () => {
     const srv = http.createServer(handler(REPO)).listen(0, '127.0.0.1'); await new Promise(r => srv.on('listening', r));
     const get = range => new Promise((res, rej) => http.get({ host: '127.0.0.1', port: srv.address().port, path: '/package.json', headers: range ? { range } : {} }, r => { const b = []; r.on('data', d => b.push(d)); r.on('end', () => res({ status: r.statusCode, h: r.headers, body: Buffer.concat(b) })); }).on('error', rej));

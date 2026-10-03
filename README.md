@@ -126,7 +126,7 @@ All generated files go to `out/` (git-ignored): stills, thousands of sub-frame J
 | Text looks soft or flickers between frames | do not use `will-change: transform`; Chrome then keeps a stale raster scale. See `docs/LESSONS.md`. |
 | `Expected N frames ... found M` | the render was interrupted; re-run `--frames` (it wipes and restarts). |
 | Fonts differ from your machine | bundle `.woff2` in `projects/<name>/fonts` and `@font-face` them; don't rely on installed fonts. |
-| File too big | raise `CRF` (`CRF=22 node tools/build.js ...`) or lower `subframes`. Film grain is expensive to compress. |
+| File too big | raise `CRF` (`CRF=22 node tools/build.js ...`, or `"render": { "crf": 22 }` in `cues.json`) or lower `subframes`. Film grain is expensive to compress. |
 | Different aspect ratio | set `width`/`height` in `cues.json` (verified: 1080x1920 renders at that size), the same size on `#v` in CSS, the `<canvas>` width/height attributes, the `W`/`H` constants in the scene, and `PV.createWorld(stage, canvas, w, h)`. Then re-lay-out your elements - the starter's positions assume 1920x1080. |
 
 ## Limits and honesty
