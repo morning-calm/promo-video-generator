@@ -40,6 +40,8 @@ node tools/render.js projects/hello --stills 1,2.5,4,5.5       # -> out/hello/st
 node tools/render.js projects/hello --frames                   # 360 frames x 4 sub-frames
 python3 projects/hello/sound.py                                # -> out/hello/score.wav
 node tools/build.js projects/hello                             # -> out/hello/hello.mp4
+# or render + build in one pass, without writing the sub-frames to disk:
+node tools/render.js projects/hello --mp4                      # -> out/hello/hello.mp4 (after sound.py)
 ```
 
 Re-create the included example from scratch:

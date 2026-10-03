@@ -116,10 +116,11 @@ node  tools/render.js <project> --stills 1,2.5,9          # PNG stills -> out/<n
 node  tools/render.js <project> --frames [--workers N] [--only 120-180] [--keep]
 python3 <project>/sound.py                                # -> out/<name>/score.wav
 node  tools/build.js <project> [out.mp4]                  # CRF=18 PRESET=slow by default
+node  tools/render.js <project> --mp4 [out.mp4]           # render + build in one pass, no frame files (run sound.py first)
 python3 tools/sheet.py out/sheet.png a.png b.png ...      # contact sheet (needs Pillow)
 npm test                                                  # end-to-end smoke test (~30 s)
 ```
 
-Environment: `PV_CHANNEL=chrome` (default) or `PV_CHANNEL=""` for Playwright's bundled Chromium. `PV_PYTHON` = the Python that `doctor.js` and `npm test` run (default `python3`, or `python` on Windows).
+Environment: `PV_CHANNEL=chrome` (default, the installed Chrome), `PV_CHANNEL=chromium` (Playwright's full Chromium) or `PV_CHANNEL=""` (Playwright's headless shell, which draws WebGL in software). Chrome and Chromium use the graphics card without extra flags. `PV_PYTHON` = the Python that `doctor.js` and `npm test` run (default `python3`, or `python` on Windows).
 
 Timing, for planning: the 15 s example is 3,600 JPEG screenshots and takes about 1-5 minutes on a modern laptop; a 6 s starter about a third of that. `subframes: 2` halves it with a lighter blur; `subframes: 1` is the fast draft mode.

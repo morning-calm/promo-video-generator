@@ -52,6 +52,22 @@ const OUT = path.join(REPO, 'out', '_selftest');
     } finally { fs.writeFileSync(cuesFile, JSON.stringify(base)); }
   });
 
+  await ok('render --mp4 streams to the same mp4 as --frames + build', () => {
+    // Four flat quadrants whose colours are functions of t render the same every time, so the two mp4s can be compared byte for byte,
+    // and a flipped, shifted or cropped picture would not match.
+    fixture('_selftest_stream', { 'cues.json': JSON.stringify({ fps: 30, duration: 1, subframes: 2, width: 64, height: 64 }),
+      'index.html': `<!doctype html><html><body style="margin:0;width:64px;height:64px;display:grid;grid-template-columns:32px 32px"><i></i><i></i><i></i><i></i><script>
+const q = [...document.querySelectorAll('i')];
+window.seek = t => q.forEach((e, k) => { e.style.cssText = 'display:block;height:32px;background:rgb(' + Math.round((t * 200 + k * 60) % 256) + ',' + k * 70 + ',' + Math.round(255 - t * 200) + ')'; });
+window.__ready = true;
+</script></body></html>` });
+    const o = path.join(REPO, 'out', '_selftest_stream'); fs.mkdirSync(o, { recursive: true });
+    exe('ffmpeg', ['-v', 'error', '-f', 'lavfi', '-i', 'sine=f=440:d=1.2', '-ac', '2', '-ar', '48000', path.join(o, 'score.wav')]);
+    sh('node tools/render.js projects/_selftest_stream --frames'); sh(`node tools/build.js projects/_selftest_stream ${path.join('out', '_selftest_stream', 'two-step.mp4')}`);
+    sh(`node tools/render.js projects/_selftest_stream --mp4 ${path.join('out', '_selftest_stream', 'stream.mp4')}`);
+    assert(fs.readFileSync(path.join(o, 'two-step.mp4')).equals(fs.readFileSync(path.join(o, 'stream.mp4'))), 'streamed mp4 differs from frames + build');
+  });
+
   await ok('the file server answers byte ranges', async () => {
     const srv = http.createServer(handler(REPO)).listen(0, '127.0.0.1'); await new Promise(r => srv.on('listening', r));
     const get = range => new Promise((res, rej) => http.get({ host: '127.0.0.1', port: srv.address().port, path: '/package.json', headers: range ? { range } : {} }, r => { const b = []; r.on('data', d => b.push(d)); r.on('end', () => res({ status: r.statusCode, h: r.headers, body: Buffer.concat(b) })); }).on('error', rej));

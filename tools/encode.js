@@ -19,8 +19,9 @@ const videoFilter = s => {
   return s.S > 1 ? `tmix=frames=${s.S},select='eq(mod(n,${s.S}),${s.S - 1})',setpts=N/(${s.fps}*TB),${vf}` : vf;
 };
 
-// ffmpeg arguments: frames = a %06d.jpg pattern, wav = score.wav or null, out = the mp4 path.
-const ffmpegArgs = (s, { frames, wav, out }) => ['-y', '-loglevel', 'error', '-framerate', String(s.fps * s.S), '-i', frames, ...(wav ? ['-i', wav, '-c:a', 'aac', '-b:a', '256k'] : []),
+// ffmpeg arguments: frames = a %06d.jpg pattern, or '-' for JPEGs piped on stdin in order; wav = score.wav or null; out = the mp4 path.
+const ffmpegArgs = (s, { frames, wav, out }) => ['-y', '-loglevel', 'error', ...(frames === '-' ? ['-f', 'image2pipe', '-c:v', 'mjpeg'] : []), '-framerate', String(s.fps * s.S), '-i', frames,
+  ...(wav ? ['-i', wav, '-c:a', 'aac', '-b:a', '256k'] : []),
   '-vf', videoFilter(s), '-r', String(s.fps), '-c:v', 'libx264', '-preset', s.preset, '-crf', s.crf, '-profile:v', 'high', '-pix_fmt', 'yuv420p',
   '-color_primaries', 'bt709', '-color_trc', 'bt709', '-colorspace', 'bt709', '-t', String(s.duration), '-movflags', '+faststart', out];
 

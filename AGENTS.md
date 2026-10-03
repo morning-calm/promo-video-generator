@@ -60,6 +60,7 @@ Copy `templates/starter/sound.py` and place sounds at `C['cue']` times with `lib
 node tools/render.js projects/my-launch --frames      # 900 frames x 4 sub-frames = 3,600 JPEGs; ~1-5 minutes
 node tools/build.js projects/my-launch                # -> out/my-launch/my-launch.mp4
 ```
+`node tools/render.js projects/my-launch --mp4` does both in one pass (same encode, no JPEGs on disk); keep `--frames` when you want to spot-check a range with `--only` or re-build without re-rendering.
 These are long-running: start them in the background (in Cursor: `block_until_ms: 0`, then await) and poll; do not sleep-loop. Do a quick `--only 300-360` render to spot-check a range first.
 
 ### 7. Verify the **mp4**, not just the stills
