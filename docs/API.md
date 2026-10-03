@@ -14,7 +14,16 @@ The single source of timing for picture **and** sound.
 | `shutter` | 0.5 | fraction of a frame the virtual shutter is open (0.5 = 180 degrees, the film look) |
 | `width`, `height` | 1920, 1080 | output size. Also set the same size on `#v` in your CSS, on the `<canvas>`, and in `PV.createWorld(stage, canvas, w, h)`; positions in your scene are yours to re-lay-out |
 | `dpr` | 1 | device scale factor (2 renders at 2x then encodes at the larger size - slow) |
+| `render` | | optional render settings, in one object so they never collide with your moment names (table below) |
 | anything else | | your named moments in seconds: `"hit": 2.45`. Strings and numbers are fine (e.g. the typed text) |
+
+### `render` settings
+
+All optional; leave `render` out and nothing changes.
+
+| key | default | meaning |
+|---|---|---|
+| `page` | `index.html` | the page to render, relative to the project; a `?query` or `#hash` is passed to the page (`"dist/reel.html#clean"`) |
 
 ## Scene contract (browser)
 

@@ -11,7 +11,10 @@ const exe = (cmd, args) => execFileSync(cmd, args, { cwd: REPO, stdio: ['ignore'
 // The RGB of one pixel of an image (or of the first frame of a video), read with ffmpeg.
 const pixel = (file, x, y) => [...execFileSync('ffmpeg', ['-v', 'error', '-i', file, '-frames:v', '1', '-vf', `crop=1:1:${x}:${y}`, '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-'])];
 let pass = 0; const ok = async (name, fn) => { try { await fn(); pass++; console.log('PASS', name); } catch (e) { console.log('FAIL', name, '\n', e.message); cleanup(); process.exit(1); } };
-const cleanup = () => { for (const d of [P, V, path.join(REPO, 'out', '_selftest'), path.join(REPO, 'out', '_selftest_video')]) fs.rmSync(d, { recursive: true, force: true }); };
+// Every test project is named _selftest*; cleanup() removes them and their output.
+const cleanup = () => { for (const top of ['projects', 'out']) { const d = path.join(REPO, top); for (const n of fs.existsSync(d) ? fs.readdirSync(d) : []) if (n.startsWith('_selftest')) fs.rmSync(path.join(d, n), { recursive: true, force: true }); } };
+const fixture = (name, files) => { const d = path.join(REPO, 'projects', name); for (const [f, c] of Object.entries(files)) { fs.mkdirSync(path.dirname(path.join(d, f)), { recursive: true }); fs.writeFileSync(path.join(d, f), c); } return d; };
+const fails = c => { try { sh(c); return null; } catch (e) { return String(e.stdout) + String(e.stderr); } };  // the command's output if it failed, else null
 const OUT = path.join(REPO, 'out', '_selftest');
 
 (async () => {
@@ -58,6 +61,17 @@ if (v.readyState >= 2) window.__ready = true; else v.addEventListener('loadeddat
     sh('node tools/render.js projects/_selftest_video --stills 0.5,1.5,2.5');
     const [r, g, b] = ['0.50', '1.50', '2.50'].map(t => pixel(path.join(REPO, 'out', '_selftest_video', 'stills', `t${t}.png`), 160, 90));
     assert(r[0] > 200 && r[1] < 80, `0.5 s should be red, got ${r}`); assert(g[1] > 200 && g[0] < 100, `1.5 s should be green, got ${g}`); assert(b[2] > 200 && b[1] < 80, `2.5 s should be blue, got ${b}`);
+  });
+
+  await ok('render.page renders another page of the project and keeps its #hash', () => {
+    fixture('_selftest_page', { 'cues.json': JSON.stringify({ fps: 30, duration: 1, subframes: 1, width: 320, height: 180, render: { page: 'sub/page.html#go' } }),
+      'sub/page.html': `<!doctype html><html><body style="margin:0"><script>
+document.body.style.cssText = 'margin:0;height:180px;background:' + (location.hash === '#go' ? 'red' : 'blue'); window.seek = () => {}; window.__ready = true;
+</script></body></html>` });
+    sh('node tools/render.js projects/_selftest_page --stills 0.5');
+    const c = pixel(path.join(REPO, 'out', '_selftest_page', 'stills', 't0.50.png'), 160, 90); assert(c[0] > 200 && c[2] < 80, `expected red (page found, hash kept), got ${c}`);
+    fixture('_selftest_nopage', { 'cues.json': JSON.stringify({ fps: 30, duration: 1, render: { page: 'missing.html' } }) });
+    const out = fails('node tools/render.js projects/_selftest_nopage --stills 0.5'); assert(out && /No missing\.html in/.test(out), 'a missing render.page must fail with its name');
   });
 
   await ok('a broken scene fails loudly', () => {

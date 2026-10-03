@@ -7,6 +7,7 @@
         [--only 120-180]   render just frames 120..180 (quick spot-checks; still wipes the frames dir unless --keep)
         [--keep]           do not wipe the frames dir first
    <project> is a folder (under this repo) containing index.html and cues.json.  Optional env: PV_CHANNEL=chrome (default) | "" for bundled Chromium.
+   cues.json "render": { "page": "dist/reel.html#clean" } renders another page of the project (path relative to the project; ?query and #hash are kept).
 
    Frame f, sub-frame s of S is rendered at   t = (f + (s/(S-1) - 0.5) * shutter) / fps   (shutter = fraction of a frame the "camera" is open, default 0.5).
    tools/build.js averages the S sub-frames of each frame, so anything that moves during the shutter is blurred like real film. */
@@ -20,16 +21,18 @@ const projectArg = process.argv[2] && !process.argv[2].startsWith('--') ? proces
 if (!projectArg || !(arg('stills') || arg('frames'))) { console.log('usage: node tools/render.js <project-dir> (--stills 1,2.5 | --frames [--workers N] [--only a-b] [--keep])'); process.exit(2); }
 const PROJECT = path.resolve(projectArg);
 if (!PROJECT.startsWith(REPO + path.sep)) { console.error('The project folder must live inside this repo (so ../../lib/motion.js resolves). Try projects/<name>.'); process.exit(2); }
-if (!fs.existsSync(path.join(PROJECT, 'index.html'))) { console.error('No index.html in ' + PROJECT); process.exit(2); }
 const NAME = path.basename(PROJECT), OUT = path.join(REPO, 'out', NAME);
-const CUES = JSON.parse(fs.readFileSync(path.join(PROJECT, 'cues.json'), 'utf8'));
+if (!fs.existsSync(path.join(PROJECT, 'cues.json'))) { console.error('No cues.json in ' + PROJECT); process.exit(2); }
+const CUES = JSON.parse(fs.readFileSync(path.join(PROJECT, 'cues.json'), 'utf8')), R = CUES.render || {};
+const PAGE = R.page || 'index.html';
+if (!fs.existsSync(path.join(PROJECT, PAGE.split(/[?#]/)[0]))) { console.error(`No ${PAGE.split(/[?#]/)[0]} in ${PROJECT}`); process.exit(2); }
 const FPS = CUES.fps || 60, DUR = CUES.duration, S = CUES.subframes || 4, SHUTTER = CUES.shutter === undefined ? 0.5 : CUES.shutter, W = CUES.width || 1920, H = CUES.height || 1080, DPR = CUES.dpr || 1;
 if (!DUR) { console.error('cues.json needs "duration" (seconds)'); process.exit(2); }
 
 (async () => {
   const srv = http.createServer(handler(REPO)).listen(0, '127.0.0.1');
   await new Promise(r => srv.on('listening', r));
-  const url = `http://127.0.0.1:${srv.address().port}/${path.relative(REPO, PROJECT).split(path.sep).join('/')}/index.html`;
+  const url = `http://127.0.0.1:${srv.address().port}/${path.relative(REPO, PROJECT).split(path.sep).join('/')}/${PAGE}`;
   const channel = process.env.PV_CHANNEL === undefined ? 'chrome' : process.env.PV_CHANNEL;
   const b = await chromium.launch({ channel: channel || undefined, args: ['--disable-gpu-vsync', '--force-color-profile=srgb'] });
   let failed = false;
